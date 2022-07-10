@@ -53,13 +53,17 @@ uint32_t read_ir() {
       }
       */
 
-      // Serial.println(result, HEX);
+      if (ret != 0) {
+        Serial.print("IR: ");
+        Serial.println(ret, HEX);
+      }
 
       IrReceiver.resume();
 
       return ret;
 
   }
+  return 0;
 
 }
 

@@ -25,7 +25,7 @@ void setup() {
   setup_leds();
   setup_ir();
   
-  setup_ble()
+  setup_ble();
 
 }
 
