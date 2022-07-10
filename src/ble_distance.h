@@ -2,6 +2,7 @@
 
 #include "sys/time.h"
 #include <Arduino.h>
+#include <heart.h>
 #include <BLEDevice.h>
 #include <BLEUtils.h>
 #include <BLEScan.h>
@@ -9,7 +10,6 @@
 #include "BLEBeacon.h"
 #include "esp_sleep.h"
 
-#define ROLE_PIN (16)
 bool is_sender = false;
 
 String knownBLEAddresses[] = {"78:21:84:7C:1C:74", "30:C6:F7:1E:28:B4"};
@@ -31,7 +31,7 @@ BLEAdvertising *pAdvertising;   // BLE Advertisement type
 struct timeval now;
 
 #define SERVICE_UUID        "3fafc201-1fb5-459e-8fcc-c5c9c331914b"
-#define BEACON_UUID "aeb5483e-36e1-4688-b7f5-ea07361b26a8"
+#define BEACON_UUID         "aeb5483e-36e1-4688-b7f5-ea07361b26a8"
 
 void setBeacon() {
 
@@ -99,7 +99,7 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
     }
 };
 
-void ble_setup() {
+void setup_ble() {
 
     gettimeofday(&now, NULL);
     //Serial.printf("start ESP32 %d\n", bootcount++);
