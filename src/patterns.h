@@ -9,6 +9,9 @@
 
 #define ARRAY_SIZE(A) (sizeof(A) / sizeof((A)[0]))
 
+#define STATIC_PATTERN (254)
+#define GHUE_SPEED (100)        // ms to increase gHue
+
 uint8_t gHue = 0;
 uint8_t brightness = STARTING_BRIGHTNESS;
 CRGB color = CRGB::Red; 
@@ -46,52 +49,46 @@ void solid() {
 }
 
 void blue() {
-
     setColor(CRGB::Blue);
     solid();
-    gCurrentPatternNumber = 254; // static pattern
-
+    gCurrentPatternNumber = STATIC_PATTERN; // static pattern
 }
 
 void red() {
-
     setColor(CRGB::Red);
     solid();
-    gCurrentPatternNumber = 254; // static pattern
-
+    gCurrentPatternNumber = STATIC_PATTERN; // static pattern
 }
 
 void green() {
-
     setColor(CRGB::Green);
     solid();
-    gCurrentPatternNumber = 254; // static pattern
-
+    gCurrentPatternNumber = STATIC_PATTERN; 
 }
 
-
-void nervous() {
-  // what happens when flirted with
-
-  FastLED.setBrightness(brightness);
-  brightness = (brightness + 10) % 255;
-
+void clear() {
+    setColor(CRGB::Black);
+    solid_noShow();
 }
+
+void draw_little_heart() {
+  clear();
+  for (int i=0; i<ARRAY_SIZE(little_heart); i++) {
+    leds[little_heart[i]] = CRGB::Red;
+  }
+}
+
 
 void rainbowCircles() {
-
     for (int i=0; i<NUMPIXELS; i++) {
        leds[i] = CHSV(gHue*5 + (circles[i] * 20), 255, 255);
     }
-
 }
 
 void rainbowLines() {
-
     for (int i=0; i<NUMPIXELS; i++) {
       leds[i] = CHSV(gHue + (row[i] * 20), 255, 255);
     }
-
 }
 
 void rainbow() 
@@ -358,10 +355,33 @@ void outside() {
     setColor(CRGB::Black);
     solid_noShow();
     for (int i=0; i<ARRAY_SIZE(outer_ring); i++) {
-      leds[outer_ring[i]] = CRGB::White;
+      leds[outer_ring[i]] = color;
     }
     FastLED.show();
-  
+}
+
+void nervous(bool is_sender=false) {
+  // what happens when flirted with
+  Serial.println("pretending to be nervous");
+
+  if (is_sender) {
+    setColor(CRGB::LightBlue);
+    outside();
+  } else {
+    setColor(CRGB::Pink);
+    outside();
+  }
+
+  FastLED.setBrightness(brightness);
+  brightness = (brightness + 10) % 255;
+  gCurrentPatternNumber = STATIC_PATTERN; 
+
+  if (!is_sender) 
+    draw_little_heart();     // no forget the baby
+
+  // TBD when getting out of nervous, reset the brightness
+
+
 }
 
 void sound_show() {
@@ -380,7 +400,7 @@ void sound_overlay() {
 
 void setup_leds() {
 
-  FastLED.addLeds<WS2812B, LED_PIN,GRB>(leds, NUMPIXELS).setCorrection( TypicalLEDStrip );
+  FastLED.addLeds<WS2812B, LED_PIN, GRB>(leds, NUMPIXELS).setCorrection( TypicalLEDStrip );
   FastLED.setMaxPowerInVoltsAndMilliamps( 5, MAX_POWER_MILLIAMPS);
   FastLED.setBrightness(BRIGHTNESS);
 
@@ -392,6 +412,7 @@ struct SimplePatternList {
 };
 
 SimplePatternList gPatterns[] = { 
+                                {draw_little_heart, "Little Heart"},
                                 {bpm_rings, "BMP with Rings"},
                                 {fire, "Fire"},
                                 {sound_wave, "Sound Wave"},
@@ -427,25 +448,14 @@ void previousPattern()
   Serial.println(gPatterns[gCurrentPatternNumber].name);
 }
 
-void setFlirtPattern()
-{
-  gCurrentPatternNumber = 0;
-}
-
-/*
-void setRed() {
-  red();
-}
-*/
-
 void updatePattern() {
 
-  if (gCurrentPatternNumber != 254) {
+  if (gCurrentPatternNumber != STATIC_PATTERN) {
     gPatterns[gCurrentPatternNumber].functPtr();   // call the helper script
     // FastLED.setBrightness(BRIGHTNESS);
     FastLED.show();
 
-    EVERY_N_MILLISECONDS(100) { gHue = (gHue+1) % 255; }
+    EVERY_N_MILLISECONDS(GHUE_SPEED) { gHue = (gHue+1) % 255; }
   }
   if (gOverlayPattern != 255) {
     gOverlay[gOverlayPattern].functPtr();   // call the helper script
