@@ -11,8 +11,6 @@
   #include <avr/power.h>
 #endif
 
-#define DELAYVAL 500
-
 bool random_pattern = true;       // default is false
 
 void setup() {
@@ -78,9 +76,22 @@ void loop() {
 
   }
 
-  ble_loop();
+  EVERY_N_SECONDS(10) {
+    ble_scan();
+  }
+
+  if (ble_loop()) {
+    // go nervous
+    // Serial.println("ble_loop true");
+    nervous(get_sender());      // whether sender or recipient, aka raffy or whit
+  }
 
   updatePattern();
+
+  EVERY_N_MILLISECONDS(500) {
+    Serial.println("500 msec");
+  }
+
 
   // for input button
   //void touchAttachInterrupt(uint8_t pin, void (*userFunc)(void), uint16_t threshold);
@@ -97,25 +108,4 @@ void loop() {
   }
   */
 
-  /*
-
-  for(int i=0; i<NUMPIXELS; i++) {
-
-    leds[i] = CRGB::Blue;
-    //pixels.setPixelColor(i-2, pixels.Color(150, 0, 0));
-    //pixels.setPixelColor(i-1, pixels.Color(0, 0, 0));
-  }
-  FastLED.show();
-  delay(DELAYVAL);
-
-
-  for(int i=0; i<NUMPIXELS; i++) {
-
-    leds[i] = CRGB::LightBlue;
-    //pixels.setPixelColor(i-2, pixels.Color(150, 0, 0));
-    //pixels.setPixelColor(i-1, pixels.Color(0, 0, 0));
-  }
-  FastLED.show();
-  delay(DELAYVAL);
-  */
 }
