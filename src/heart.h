@@ -2,7 +2,7 @@
 
 #define LED_PIN   (12)
 #define MIC_PIN   (32)                                           // Analog port for microphone
-#define ROLE_PIN  (16)                  // for BLE flirting
+#define ROLE_PIN  (15)                  // for BLE flirting
 
 #define NUMPIXELS (52)
 #define BRIGHTNESS (200)
@@ -24,6 +24,8 @@ static const unsigned char outer_ring[] = {0, 1, 2, 3,
                                           41, 46,
                                           47, 50,
                                           51 };   
+
+static const unsigned char little_heart[] = { 36, 37, 26, 27, 28, 29, 16, 18 };
 static const unsigned char ROWS[] = {4, 8, 11, 10, 8, 6, 4, 1};
 static const unsigned char row[] = {
                                  0,0,0,0,
