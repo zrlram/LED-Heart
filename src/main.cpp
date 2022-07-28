@@ -5,7 +5,6 @@
 #include <ble_distance.h>
 // #include <mesh_wifi.h>
 // #include <input.h>
-// #include <bluetooth.h>
 
 #ifdef __AVR__
   #include <avr/power.h>
@@ -31,10 +30,11 @@ void loop() {
 
   // when we are on random pattern, keep advancing
   if (random_pattern) {
-    EVERY_N_SECONDS(5) {nextPattern();}
+    EVERY_N_SECONDS(10) {nextPattern();}
   }
 
   switch(read_ir()) {
+      // Serial.println(F("Overwrite Nervous"))
       case Button_Red: 
         Serial.println(F("RED - Next Show"));
         nextPattern();
@@ -61,37 +61,47 @@ void loop() {
         random_pattern = false;
         red();
       break;
-      case Button_LightGreen:
-        random_pattern = false;
-        green();
-      break;
       case Button_LightBlue:
         random_pattern = false;
         blue();
       break;
       case Button_Flash:
         Serial.println(F("Blending Overlay")); 
-        set_blending_verlay();
+        set_blending_overlay();
       break; 
-
+      case Button_Off:
+        Serial.println(F("Turning Off")); 
+        // TODO
+      break;
+      case Button_Orange:
+        decrease_ghue_speed();
+        Serial.println(F("Decrease Speed")); 
+      break;
+      case Button_LightGreen:
+        increase_ghue_speed();
+        Serial.println(F("Increase Speed")); 
+      break;
   }
 
-  EVERY_N_SECONDS(10) {
+  timer.tick();
+
+  // we only scan if we are not the server, but the ble_lib will check for that
+  EVERY_N_SECONDS(5) {
     ble_scan();
   }
 
   if (ble_loop()) {
     // go nervous
-    // Serial.println("ble_loop true");
     nervous(get_sender());      // whether sender or recipient, aka raffy or whit
+  } else {
+    updatePattern();
   }
 
-  updatePattern();
-
+  /*
   EVERY_N_MILLISECONDS(500) {
     Serial.println("500 msec");
   }
-
+  */
 
   // for input button
   //void touchAttachInterrupt(uint8_t pin, void (*userFunc)(void), uint16_t threshold);
