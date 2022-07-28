@@ -13,13 +13,15 @@
 #include "BLEBeacon.h"
 #include "esp_sleep.h"
 
-#define RSSI_THRESHOLD (-55)
+#define RSSI_THRESHOLD (-40)
+#define SCAN_TIME (3)     // scan for 3 seconds every now and then 
 
 bool is_server = false;     // the role of this guy
 bool device_found = false;
 bool connected = false;
 
 // String knownBLEAddresses[] = {"78:21:84:7c:1c:76", "30:c6:f7:1e:28:b6"}; // lowercase!
+static BLEAddress serverAddress = BLEAddress("78:21:84:7c:1c:76");
 // #define ENDIAN_CHANGE_U16(x) ((((x)&0xFF00) >> 8) + (((x)&0xFF) << 8))
 
 // #define GPIO_DEEP_SLEEP_DURATION     10  // sleep x seconds and then wake up
@@ -145,15 +147,23 @@ class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
       }
       */
 
-      if (advertisedDevice.getName() == SERVERNAME) { //Check if the name of the advertiser matches
+      // Serial.println(advertisedDevice.getName().c_str());
+      // Serial.println(advertisedDevice.getAddress().toString().c_str());
+
+      // TODO: Fix to use the SERVERNAME - somehow not advertised by the server
+      // if (advertisedDevice.getName() == SERVERNAME) { //Check if the name of the advertiser matches
+      // DOES THIS WORK ??
+      // if (advertisedDevice.haveServiceUUID() && advertisedDevice.getServiceUUID().equals(serviceUUID)) {
+
+      if (advertisedDevice.getAddress().equals(serverAddress)) { //Check if the name of the advertiser matches
 
           Serial.println(advertisedDevice.getRSSI());
 
           if (advertisedDevice.getRSSI() < RSSI_THRESHOLD) {
             device_found = true;
-            advertisedDevice.getScan()->stop();
             pServerAddress = new BLEAddress(advertisedDevice.getAddress()); //Address of advertiser is the one we need
           } 
+          advertisedDevice.getScan()->stop(); // stop scanning anyways. We know we found our partner, but it's too far away
       }
     }
 };
@@ -211,8 +221,11 @@ void setup_ble() {
         pCharacteristic->setValue("Hello, World!");
         pService->start();
         pAdvertising = BLEDevice::getAdvertising();
+        pAdvertising->addServiceUUID(SERVICE_UUID);
         // setBeacon();
-        pAdvertising->start();
+        pServer->getAdvertising()->start();
+
+        // pAdvertising->start();
 
         //pAdvertising->addServiceUUID(SERVICE_UUID);
         //pAdvertising->setScanResponse(true);
@@ -246,19 +259,19 @@ void setup_ble() {
 void ble_scan() {
   // start or continue the scan
 
-  if (!connected) {
-    pBLEScan->start(0, nullptr, true);    // https://github.com/espressif/arduino-esp32/issues/6090
+  // TODO: Should this be true not false here?
+  if (!is_server && !connected) {
+    pBLEScan->start(SCAN_TIME, nullptr, true);    // https://github.com/espressif/arduino-esp32/issues/6090
+    Serial.println("BLE_Scan");
   }
 
 }
 
 bool ble_loop() {
 
-  // TBD - HANDLE client being connected and then losing connection. 
-
-  if (connected) [
+  if (connected) {
     return true;
-  ]
+  }
 
   if (device_found) {
     if (connectToServer(*pServerAddress))  {      
@@ -274,8 +287,12 @@ bool ble_loop() {
     return true;
   } 
 
+  /*
   if (!connected && !device_found) {
-    return false;
+    return false; 
   }
+  */
+
+  return false;
 
 }

@@ -6,15 +6,20 @@
 #include <heart.h>
 #include <sound.h>
 #include <FastLED.h>
+#include "arduino-timer.h"
 
 #define ARRAY_SIZE(A) (sizeof(A) / sizeof((A)[0]))
 
 #define STATIC_PATTERN (254)
-#define GHUE_SPEED (100)        // ms to increase gHue
 
-uint8_t gHue = 0;
-uint8_t brightness = STARTING_BRIGHTNESS;
+static uint16_t GHUE_SPEED = 50;       // ms to increase gHue   0 - 1000 in 50 steps
+
+static uint8_t gHue = 0;
+static uint8_t brightness = STARTING_BRIGHTNESS;
 CRGB color = CRGB::Red; 
+
+auto timer = timer_create_default();
+bool no_updates = false;          // When we do not want to call update_pattern
 
 CRGB leds[NUMPIXELS];
 
@@ -30,14 +35,45 @@ CRGBPalette16 currentPalette = PartyColors_p;
 CRGBPalette16 targetPalette = OceanColors_p;
 TBlendType    currentBlending = LINEARBLEND;                  // NOBLEND or LINEARBLEND
 
+bool reset_no_update(void *) {
+  no_updates = false;
+  return false; // repeat?
+}
+
+void indicator(uint16_t value, uint16_t maximum, CRGB c = CRGB::Blue) {
+  timer.cancel();
+  timer.in(1000, reset_no_update); 
+  no_updates = true;
+
+  // 10 steps
+  FastLED.clear();
+  for (int i=0; i<10.0/maximum*value; i++) {
+    leds[i+23] = c;
+  }
+  FastLED.show();
+}
+
+void increase_ghue_speed(bool show_indicator = true) {
+  if (GHUE_SPEED < 950)
+    GHUE_SPEED += 50;
+  if (show_indicator) 
+    indicator(GHUE_SPEED, 1000, CRGB::Pink);
+}
+
+void decrease_ghue_speed(bool show_indicator = true) {
+  if (GHUE_SPEED > 50)
+    GHUE_SPEED -= 50;
+  if (show_indicator) 
+    indicator(GHUE_SPEED, 1000, CRGB::Pink);
+}
 
 void setColor(CRGB col) {
   color = col;
 }
 
-void solid_noShow() {
+void solid_noShow(CRGB c) {
     for (int i=0; i<NUMPIXELS; i++) {
-      leds[i] = color;
+      leds[i] = c;
     }
 }
 
@@ -66,13 +102,8 @@ void green() {
     gCurrentPatternNumber = STATIC_PATTERN; 
 }
 
-void clear() {
-    setColor(CRGB::Black);
-    solid_noShow();
-}
-
 void draw_little_heart() {
-  clear();
+  FastLED.clear();
   for (int i=0; i<ARRAY_SIZE(little_heart); i++) {
     leds[little_heart[i]] = CRGB::Red;
   }
@@ -147,7 +178,7 @@ void bpm()
   uint8_t BeatsPerMinute = 62;
   CRGBPalette16 palette = PartyColors_p;
   uint8_t beat = beatsin8( BeatsPerMinute, 64, 255);
-  for( int i = 0; i < NUMPIXELS; i++) { //9948
+  for( int i = 0; i < NUMPIXELS; i++) { 
     leds[i] = ColorFromPalette(palette, gHue+(i*2), beat-gHue+(i*10));
   }
 }
@@ -175,7 +206,7 @@ void pride()
   uint16_t brightnessthetainc16 = beatsin88( 203, (25 * 256), (40 * 256));
   uint8_t msmultiplier = beatsin88(147, 23, 60);
 
-  uint16_t hue16 = sHue16;//gHue * 256;
+  uint16_t hue16 = sHue16; //gHue * 256;
   uint16_t hueinc16 = beatsin88(113, 1, 3000);
   
   uint16_t ms = millis();
@@ -206,19 +237,21 @@ void pride()
 }
 
 
-void decreaseBrightness() {
+void decreaseBrightness(bool show_indicator = true) {
   uint8_t b = FastLED.getBrightness();
+  if (show_indicator) indicator(b, 255);
   if (b > 10)
     FastLED.setBrightness(b - 10);
 }
 
-void increaseBrightness() {
+void increaseBrightness(bool show_indicator = true) {
   uint8_t b = FastLED.getBrightness();
+  if (show_indicator) indicator(b, 255);
   if (b < 245)
     FastLED.setBrightness(b + 10);
 }
 
-void set_blending_verlay() {
+void set_blending_overlay() {
   if (gOverlayPattern == 0) {
     gOverlayPattern = 255;      // turn off if it was on
   } else 
@@ -261,7 +294,9 @@ void sndwave() {
 
 void sound_wave() {
 
-  EVERY_N_SECONDS(5) {                                        // Change the palette every 5 seconds.
+  // TODO: Try - this was every 5 seconds
+  // EVERY_N_SECONDS(5) {                                        // Change the palette every 5 seconds.
+  EVERY_N_MILLIS(GHUE_SPEED*10) {                                        // Change the palette every 5 seconds.
     for (int i = 0; i < 16; i++) {
       targetPalette[i] = CHSV(random8(), 255, 255);
     }
@@ -289,7 +324,8 @@ void sound_wave() {
 // COOLING: How much does the air cool as it rises?
 // Less cooling = taller flames.  More cooling = shorter flames.
 // Default 50, suggested range 20-100 
-#define COOLING  55
+// #define COOLING  55
+static uint8_t COOLING = 55;
 // SPARKING: What chance (out of 255) is there that a new spark will be lit?
 // Higher chance = more roaring fire.  Lower chance = more flickery fire.
 // Default 120, suggested range 50-200.
@@ -299,6 +335,7 @@ void fire()
 {
   // https://github.com/FastLED/FastLED/blob/master/examples/Fire2012/Fire2012.ino
   static uint8_t heat[NUMPIXELS];
+  COOLING = GHUE_SPEED / 10;    // TODO: Trying - was 55
 
   // Step 1.  Cool down every cell a little
     for( int i = 0; i < NUMPIXELS; i++) {
@@ -345,39 +382,94 @@ void blending_overlay() {
 }
 
 void runningOutside() {
-    setColor(CRGB::Black);
-    solid_noShow();
+    FastLED.clear();
     leds[outer_ring_chaser[gHue % ARRAY_SIZE(outer_ring_chaser)]] = CRGB::White;
     FastLED.show();
 }
 
 void outside() {
-    setColor(CRGB::Black);
-    solid_noShow();
+    FastLED.clear();
     for (int i=0; i<ARRAY_SIZE(outer_ring); i++) {
       leds[outer_ring[i]] = color;
     }
     FastLED.show();
 }
 
-void nervous(bool is_sender=false) {
-  // what happens when flirted with
-  Serial.println("pretending to be nervous");
+void outside(CRGB color) {
+  setColor(color);
+  outside();
+}
 
-  if (is_sender) {
-    setColor(CRGB::LightBlue);
-    outside();
-  } else {
-    setColor(CRGB::Pink);
-    outside();
+
+// https://wokwi.com/projects/287675911209222664
+// TODO - there are more where this came from - check the simulator
+static float fmap(const float x, const float in_min, const float in_max, const float out_min, const float out_max) {
+  return (out_max - out_min) * (x - in_min) / (in_max - in_min) + out_min;
+}
+// TODO: ORIGINAL: uint8_t speed = 15;
+uint8_t speed = GHUE_SPEED / 20;
+uint8_t scale = 55;
+uint8_t amplitude = 255;
+//const int8_t semiHeightMajor  =  HEIGHT / 2 + (HEIGHT % 2);
+//const int8_t semiWidthMajor = WIDTH / 2  + (WIDTH % 2);
+const int8_t semiHeightMajor  =  4;
+const int8_t semiWidthMajor = 6;
+float e_s3_speed = 0.004 * speed + 0.015; // speed of the movement along the Lissajous curves
+
+void sinusoid() {
+
+  float e_s3_size = fmap(amplitude, 1, 255, 3, 9); // amplitude of the curves
+  float time_shift = millis();
+  int8_t _scale = map8(scale, 50, 150);
+
+  // case 5: //changed by stepko //colored sinusoid
+  for (uint8_t y = 0; y < HEIGHT; y++) {
+        for (uint8_t x = 0; x < WIDTH; x++) {
+          
+          float cx = (y - semiHeightMajor) + float(e_s3_size * (sin16(e_s3_speed * 98.301 * time_shift))) / 32767.0; // the 8 centers the middle on a 16x16
+          float cy = (x - semiWidthMajor) + float(e_s3_size * (cos16(e_s3_speed * 72.0874 * time_shift))) / 32767.0;
+          int8_t v = 127 * (1 + sin16(127 * _scale * sqrt((((float) cx * cx) + ((float) cy * cy))) + (time_shift * e_s3_speed * 5)) / 32767.0);
+          leds[XY(x, y)].r = v;
+          
+          v = 127 * (1 + sin16(127 * _scale * sqrt((((float) cx * cx) + ((float) cy * cy))) + (time_shift * e_s3_speed * 10)) / 32767.0);
+          /*
+          Serial.print(v);
+          Serial.print(", ");
+          Serial.print(cx);
+          Serial.print(";  ");
+          */
+          leds[XY(x, y)].b = v;
+          
+          v = 127 * (1 + sin16(127 * _scale * sqrt((((float) cx * cx) + ((float) cy * cy))) + (time_shift * e_s3_speed * 50)) / 32767.0);
+          leds[XY(x, y)].g = v;
+          
+        }
   }
 
-  FastLED.setBrightness(brightness);
-  brightness = (brightness + 10) % 255;
+  FastLED.show();
+  
+}
+
+void nervous(bool is_sender=false) {
+  // what happens when flirted with
+  // Serial.println("pretending to be nervous");
+
+  if (is_sender) {
+    outside(CRGB::LightBlue);
+  } else {
+    outside(CRGB::Pink);
+  }
+
+  // TBD - nice blinking 
+  //FastLED.setBrightness(brightness);
+  //brightness = (brightness + 10) % 255;
+
   gCurrentPatternNumber = STATIC_PATTERN; 
 
+  /* TBD
   if (!is_sender) 
     draw_little_heart();     // no forget the baby
+    */
 
   // TBD when getting out of nervous, reset the brightness
 
@@ -412,6 +504,7 @@ struct SimplePatternList {
 };
 
 SimplePatternList gPatterns[] = { 
+                                {sinusoid, "SinusOID"},
                                 {draw_little_heart, "Little Heart"},
                                 {bpm_rings, "BMP with Rings"},
                                 {fire, "Fire"},
@@ -420,6 +513,7 @@ SimplePatternList gPatterns[] = {
                                 {outside, "Outside Only"},
                                 {runningOutside, "Running Dot Outside"},
                                 {rainbowCircles, "Rainbow Circles"},
+                                {confetti, "Confetti"},
                                 {pride, "Pride"},
                                 {solid, "Solid"},
                                 {rainbowLines, "Rainbow Lines"},
@@ -449,15 +543,19 @@ void previousPattern()
 }
 
 void updatePattern() {
+  if (!no_updates) {
+    if (gCurrentPatternNumber != STATIC_PATTERN) {
+      gPatterns[gCurrentPatternNumber].functPtr();   // call the helper script
+      // FastLED.setBrightness(BRIGHTNESS);
+      FastLED.show();
 
-  if (gCurrentPatternNumber != STATIC_PATTERN) {
-    gPatterns[gCurrentPatternNumber].functPtr();   // call the helper script
-    // FastLED.setBrightness(BRIGHTNESS);
-    FastLED.show();
-
-    EVERY_N_MILLISECONDS(GHUE_SPEED) { gHue = (gHue+1) % 255; }
-  }
-  if (gOverlayPattern != 255) {
-    gOverlay[gOverlayPattern].functPtr();   // call the helper script
+      EVERY_N_MILLIS_I( thistimer, 50 ) { // initial period = 100ms
+        thistimer.setPeriod(GHUE_SPEED);
+        gHue = (gHue+1) % 255; 
+      }
+    }
+    if (gOverlayPattern != 255) {
+      gOverlay[gOverlayPattern].functPtr();   // call the helper script
+    }
   }
 }
