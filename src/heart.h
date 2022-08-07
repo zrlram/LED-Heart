@@ -1,12 +1,14 @@
 #pragma once
 #include <Arduino.h>
 
+#define DEBUG_IR (false)
+
 #define LED_PIN   (12)
 #define MIC_PIN   (32)                                           // Analog port for microphone
 #define ROLE_PIN  (15)                  // for BLE flirting
 
 #define NUMPIXELS (52)
-#define BRIGHTNESS (200)
+#define BRIGHTNESS (100)
 #define MAX_POWER_MILLIAMPS (700)
 #define STARTING_BRIGHTNESS (150)
 
@@ -79,3 +81,21 @@ static const uint16_t xy[HEIGHT][WIDTH] = { { 100, 100, 1, 2, 100, 100, 100, 3, 
                                         };
 
 uint16_t XY( uint8_t x, uint8_t y);
+void setup_heart();
+bool is_server();
+
+// IR button mappings
+extern uint32_t Next_Show;
+extern uint32_t Prev_Show;
+extern uint32_t Bright_Down;
+extern uint32_t Bright_Up;
+extern uint32_t Randomize_Pattern;
+extern uint32_t Color_White;
+extern uint32_t Color_Red;
+extern uint32_t Color_Blue;
+extern uint32_t Blending_Overlay;
+extern uint32_t Off;
+extern uint32_t Speed_Dec;
+extern uint32_t Speed_Inc;
+extern uint32_t Runtime_Dec;
+extern uint32_t Runtime_Inc;

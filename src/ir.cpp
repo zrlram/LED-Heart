@@ -53,9 +53,11 @@ uint32_t read_ir() {
       }
       */
 
-      if (ret != 0) {
-        Serial.print("IR: ");
-        Serial.println(ret, HEX);
+      if (DEBUG_IR) {
+        if (ret != 0) {
+          Serial.print("IR: ");
+          Serial.println(ret, HEX);
+        }
       }
 
       IrReceiver.resume();

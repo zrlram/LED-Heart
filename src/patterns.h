@@ -15,7 +15,6 @@
 static uint16_t GHUE_SPEED = 50;       // ms to increase gHue   0 - 1000 in 50 steps
 
 static uint8_t gHue = 0;
-static uint8_t brightness = STARTING_BRIGHTNESS;
 CRGB color = CRGB::Red; 
 
 auto timer = timer_create_default();
@@ -84,22 +83,20 @@ void solid() {
     FastLED.show();
 }
 
+void white() {
+    setColor(CRGB::White);
+}
+
 void blue() {
     setColor(CRGB::Blue);
-    solid();
-    gCurrentPatternNumber = STATIC_PATTERN; // static pattern
 }
 
 void red() {
     setColor(CRGB::Red);
-    solid();
-    gCurrentPatternNumber = STATIC_PATTERN; // static pattern
 }
 
 void green() {
     setColor(CRGB::Green);
-    solid();
-    gCurrentPatternNumber = STATIC_PATTERN; 
 }
 
 void draw_little_heart() {
@@ -262,6 +259,7 @@ void blending_overal_off() {
   gOverlayPattern = 255;
 }
 
+// Helper Function
 void sndwave() {
   // https://github.com/atuline/FastLED-SoundReactive/blob/master/sound_wave/sound_wave.ino
 
@@ -277,20 +275,31 @@ void sndwave() {
       leds[circleMatrix[rows].circles[cols]] = leds[circleMatrix[rows-1].circles[0]];
     }
   }
-
-  /*
-  leds[NUMPIXELS/2] = ColorFromPalette(currentPalette, sampleAgc, sampleAgc, currentBlending); // Put the sample into the center
- 
-  for (int i = NUMPIXELS - 1; i > NUMPIXELS/2; i--) {       //move to the left      // Copy to the left, and let the fade do the rest.
-    leds[i] = leds[i - 1];
-  }
-
-  for (int i = 0; i < NUMPIXELS/2; i++) {                  // move to the right    // Copy to the right, and let the fade to the rest.
-    leds[i] = leds[i + 1];
-  }
-  */
-  
 } // sndwave()
+
+void sound_wave_color() {
+  // uses sound_wave, but stays with one palette based on color
+  EVERY_N_MILLIS(1000) {                                        // Update every second
+    for (int i = 0; i < 16; i++) {
+      targetPalette[i] = color;
+    }
+  }
+  
+  EVERY_N_MILLISECONDS(100) {                                 // This controls the fade speed to the new color
+    uint8_t maxChanges = 24; 
+    nblendPaletteTowardPalette(currentPalette, targetPalette, maxChanges);
+  }
+
+  EVERY_N_MILLIS_I(thistimer,20) {                            // For fun, let's make the animation have a variable rate.
+    uint8_t timeval = beatsin8(10,20,50);                     // Use a sinewave for the line below. Could also use peak/beat detection.
+    thistimer.setPeriod(timeval);                             // Allows you to change how often this routine runs.
+    // fadeToBlackBy(leds, NUMPIXELS, 16);                        // 1 = slow, 255 = fast fade. Depending on the faderate, the LED's further away will fade out.
+    fadeToBlackBy(leds, NUMPIXELS, GHUE_SPEED/3);                        // 1 = slow, 255 = fast fade. Depending on the faderate, the LED's further away will fade out.
+    getSample();
+    agcAvg();
+    sndwave();
+  }
+}
 
 void sound_wave() {
 
@@ -307,11 +316,11 @@ void sound_wave() {
     nblendPaletteTowardPalette(currentPalette, targetPalette, maxChanges);
   }
 
-
   EVERY_N_MILLIS_I(thistimer,20) {                            // For fun, let's make the animation have a variable rate.
     uint8_t timeval = beatsin8(10,20,50);                     // Use a sinewave for the line below. Could also use peak/beat detection.
     thistimer.setPeriod(timeval);                             // Allows you to change how often this routine runs.
-    fadeToBlackBy(leds, NUMPIXELS, 16);                        // 1 = slow, 255 = fast fade. Depending on the faderate, the LED's further away will fade out.
+    //fadeToBlackBy(leds, NUMPIXELS, 16);                        // 1 = slow, 255 = fast fade. Depending on the faderate, the LED's further away will fade out.
+    fadeToBlackBy(leds, NUMPIXELS, GHUE_SPEED/3);                        // 1 = slow, 255 = fast fade. Depending on the faderate, the LED's further away will fade out.
     getSample();
     agcAvg();
     sndwave();
@@ -335,7 +344,7 @@ void fire()
 {
   // https://github.com/FastLED/FastLED/blob/master/examples/Fire2012/Fire2012.ino
   static uint8_t heat[NUMPIXELS];
-  COOLING = GHUE_SPEED / 10;    // TODO: Trying - was 55
+  COOLING = GHUE_SPEED;    // TODO: Trying - was 55
 
   // Step 1.  Cool down every cell a little
     for( int i = 0; i < NUMPIXELS; i++) {
@@ -362,7 +371,6 @@ void fire()
 // Really not exciting by itself
 void blending_overlay() {
 
-  // Serial.println( "Blending _ Overlay Active");
   EVERY_N_MILLISECONDS(100) {
     uint8_t maxChanges = 24;
     nblendPaletteTowardPalette(currentPalette, targetPalette, maxChanges);   // AWESOME palette blending capability.
@@ -387,6 +395,19 @@ void runningOutside() {
     FastLED.show();
 }
 
+void outside_sound() {
+  getSample();                                                // Sample the microphone.
+  agcAvg();                                                   // Calculate the adjusted value as sampleAvg.
+
+  FastLED.clear();
+  for (int i=0; i<ARRAY_SIZE(outer_ring); i++) {
+    CHSV c = rgb2hsv_approximate( color );
+    c.v = sampleAgc;
+    leds[outer_ring[i]] = c;
+  }
+  FastLED.show();
+}
+
 void outside() {
     FastLED.clear();
     for (int i=0; i<ARRAY_SIZE(outer_ring); i++) {
@@ -406,12 +427,9 @@ void outside(CRGB color) {
 static float fmap(const float x, const float in_min, const float in_max, const float out_min, const float out_max) {
   return (out_max - out_min) * (x - in_min) / (in_max - in_min) + out_min;
 }
-// TODO: ORIGINAL: uint8_t speed = 15;
 uint8_t speed = GHUE_SPEED / 20;
 uint8_t scale = 55;
 uint8_t amplitude = 255;
-//const int8_t semiHeightMajor  =  HEIGHT / 2 + (HEIGHT % 2);
-//const int8_t semiWidthMajor = WIDTH / 2  + (WIDTH % 2);
 const int8_t semiHeightMajor  =  4;
 const int8_t semiWidthMajor = 6;
 float e_s3_speed = 0.004 * speed + 0.015; // speed of the movement along the Lissajous curves
@@ -454,40 +472,46 @@ void nervous(bool is_sender=false) {
   // what happens when flirted with
   // Serial.println("pretending to be nervous");
 
-  if (is_sender) {
-    outside(CRGB::LightBlue);
-  } else {
-    outside(CRGB::Pink);
+
+  getSample();                                                // Sample the microphone.
+  agcAvg();                                                   // Calculate the adjusted value as sampleAvg.
+
+  FastLED.clear();
+  for (int i=0; i<ARRAY_SIZE(outer_ring); i++) {
+    if (is_sender) {
+      leds[outer_ring[i]] = CHSV(HUE_BLUE, 100, sampleAgc);    // TODO - validate
+    } else {
+      leds[outer_ring[i]] = CHSV(HUE_RED, 100, sampleAgc);    // TODO - validate
+    }
   }
 
-  // TBD - nice blinking 
-  //FastLED.setBrightness(brightness);
-  //brightness = (brightness + 10) % 255;
+  // TODO -- need to figure out how to either keep calling this or ... 
+  // gCurrentPatternNumber = STATIC_PATTERN; 
 
-  gCurrentPatternNumber = STATIC_PATTERN; 
+  if (!is_sender)  { // no forget the baby and make it sound activated
+    for (int i=0; i<ARRAY_SIZE(little_heart); i++) {
+      leds[little_heart[i]] = CHSV(HUE_RED, 200, sampleAgc);    // TODO - validate
+    }
+  }
 
-  /* TBD
-  if (!is_sender) 
-    draw_little_heart();     // no forget the baby
-    */
-
-  // TBD when getting out of nervous, reset the brightness
-
+  FastLED.show();
 
 }
 
+void nervous() {
+  nervous(false);
+}
+
 void sound_show() {
-  
   blending_overlay();
   getSample();                                                // Sample the microphone.
   agcAvg();                                                   // Calculate the adjusted value as sampleAvg.
   if (samplePeak == 1) { leds[0] = CRGB::Gray; samplePeak = 0;}
   leds[(millis() % (NUMPIXELS-1)) +1] = ColorFromPalette(currentPalette, sampleAgc, sampleAgc, currentBlending);
- 
-} // ledShow()
+} 
 
 void sound_overlay() {
-  // TBD
+  // TODO
 }
 
 void setup_leds() {
@@ -504,8 +528,9 @@ struct SimplePatternList {
 };
 
 SimplePatternList gPatterns[] = { 
-                                {sinusoid, "SinusOID"},
-                                {draw_little_heart, "Little Heart"},
+                                {nervous, "Nervous"},
+                                {outside_sound, "Outside Sound"},
+                                {sound_wave_color, "Sound Wave Based on Color"},
                                 {bpm_rings, "BMP with Rings"},
                                 {fire, "Fire"},
                                 {sound_wave, "Sound Wave"},
@@ -520,7 +545,9 @@ SimplePatternList gPatterns[] = {
                                 {rainbow, "Rainbow"},
                                 {sinelon, "Sinelon"},
                                 {juggle, "Juggle"},
-                                {bpm, "BPM"}
+                                {bpm, "BPM"},
+                                {draw_little_heart, "Little Heart"},
+                                {sinusoid, "SinusOID"},
                                 };
 
 SimplePatternList gOverlay[] = { 
@@ -549,7 +576,7 @@ void updatePattern() {
       // FastLED.setBrightness(BRIGHTNESS);
       FastLED.show();
 
-      EVERY_N_MILLIS_I( thistimer, 50 ) { // initial period = 100ms
+      EVERY_N_MILLIS_I( thistimer, 50 ) { // initial period = 50ms
         thistimer.setPeriod(GHUE_SPEED);
         gHue = (gHue+1) % 255; 
       }

@@ -16,7 +16,6 @@
 #define RSSI_THRESHOLD (-40)
 #define SCAN_TIME (3)     // scan for 3 seconds every now and then 
 
-bool is_server = false;     // the role of this guy
 bool device_found = false;
 bool connected = false;
 
@@ -185,7 +184,7 @@ class MyServerCallbacks: public BLEServerCallbacks {
 };
 
 bool get_sender() {
-  return is_server;
+  return is_server();
 }
 
 void setup_ble() {
@@ -195,20 +194,9 @@ void setup_ble() {
     //Serial.printf("deep sleep (%lds since last reset, %lds since last boot)\n", now.tv_sec, now.tv_sec - last);
     // last = now.tv_sec;
 
-    // firgure out the role / sender or just receiver?
-    // set up the role pin
-    pinMode(ROLE_PIN, INPUT);
-    digitalWrite(ROLE_PIN, HIGH);
-    delay(20);    // To get a solid reading on the role pin
-    if ( digitalRead(ROLE_PIN) ) {
-      Serial.println("I am the server");
-      is_server = true;
-    } else {
-      is_server = false;
-      Serial.println("I am going to find the server");
-    }
+  
 
-    if (is_server) {
+    if (is_server()) {
         BLEDevice::init(SERVERNAME);
         BLEServer *pServer = BLEDevice::createServer();
         pServer->setCallbacks(new MyServerCallbacks());
@@ -260,7 +248,7 @@ void ble_scan() {
   // start or continue the scan
 
   // TODO: Should this be true not false here?
-  if (!is_server && !connected) {
+  if (!is_server() && !connected) {
     pBLEScan->start(SCAN_TIME, nullptr, true);    // https://github.com/espressif/arduino-esp32/issues/6090
     Serial.println("BLE_Scan");
   }
