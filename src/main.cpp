@@ -18,6 +18,7 @@ bool random_pattern = true;       // default is false
 uint8_t pattern_runtime = 10;        // seconds
 
 void setup() {
+  
   #if defined(__AVR_ATtiny85__) && (F_CPU == 16000000)
     clock_prescale_set(clock_div_1);
   #endif
@@ -28,8 +29,8 @@ void setup() {
 
   setup_leds();
   setup_ir();
-  
   setup_ble();
+  setup_sound();
 
 }
 
@@ -51,7 +52,7 @@ void loop() {
 
   // when we are on random pattern, keep advancing
   if (random_pattern) {
-    EVERY_N_SECONDS_I(patternTimer,10) { 
+    EVERY_N_SECONDS_I(patternTimer,100) {     // TODO - set back to 10
       uint8_t timeval = pattern_runtime;
       patternTimer.setPeriod(timeval);                             
       nextPattern();

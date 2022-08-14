@@ -4,6 +4,9 @@
 uint16_t XY( uint8_t x, uint8_t y)
 {
   uint16_t i;
+  if (x > WIDTH) x = WIDTH;
+  if (y > HEIGHT) y = HEIGHT;
+
   i = xy[y][x] - 1;
 
   return i;

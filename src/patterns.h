@@ -3,6 +3,9 @@
 // more: https://www.tweaking4all.com/hardware/arduino/adruino-led-strip-effects/#LEDStripEffectBouncingBalls
 // https://github.com/FastLED/FastLED/tree/master/examples
 
+
+// TODO - Use the peak detector to advance the gHue? Or some variable that can be used as an overlay to shows
+
 #include <heart.h>
 #include <sound.h>
 #include <FastLED.h>
@@ -155,6 +158,20 @@ void sinelon()
   leds[pos] += CHSV( gHue, 255, 192);
 }
 
+void bpm_rings_beat()
+{
+
+  CRGBPalette16 palette = OceanColors_p;
+  //uint8_t beat = beatsin8( BeatsPerMinute, 64, 255);
+  uint8_t beat = beatsin8( 60, 64, 255);
+
+  for (int rows = 0; rows < NUMELEMENTS(circleMatrix); rows++) {
+    for (int cols=0; cols < circleMatrix[rows].numElements; cols++) {
+      leds[circleMatrix[rows].circles[cols]] = ColorFromPalette(palette, gHue+(rows*4), beat-gHue+(rows*20));
+    }
+  }
+}
+
 void bpm_rings()
 {
   // colored stripes pulsing at a defined Beats-Per-Minute (BPM)
@@ -293,8 +310,8 @@ void sound_wave_color() {
   EVERY_N_MILLIS_I(thistimer,20) {                            // For fun, let's make the animation have a variable rate.
     uint8_t timeval = beatsin8(10,20,50);                     // Use a sinewave for the line below. Could also use peak/beat detection.
     thistimer.setPeriod(timeval);                             // Allows you to change how often this routine runs.
-    // fadeToBlackBy(leds, NUMPIXELS, 16);                        // 1 = slow, 255 = fast fade. Depending on the faderate, the LED's further away will fade out.
-    fadeToBlackBy(leds, NUMPIXELS, GHUE_SPEED/3);                        // 1 = slow, 255 = fast fade. Depending on the faderate, the LED's further away will fade out.
+    // fadeToBlackBy(leds, NUMPIXELS, 16);                    // 1 = slow, 255 = fast fade. Depending on the faderate, the LED's further away will fade out.
+    fadeToBlackBy(leds, NUMPIXELS, GHUE_SPEED/3);             // 1 = slow, 255 = fast fade. Depending on the faderate, the LED's further away will fade out.
     getSample();
     agcAvg();
     sndwave();
@@ -304,8 +321,8 @@ void sound_wave_color() {
 void sound_wave() {
 
   // TODO: Try - this was every 5 seconds
-  // EVERY_N_SECONDS(5) {                                        // Change the palette every 5 seconds.
-  EVERY_N_MILLIS(GHUE_SPEED*10) {                                        // Change the palette every 5 seconds.
+  // EVERY_N_SECONDS(5) {                                     // Change the palette every 5 seconds.
+  EVERY_N_MILLIS(GHUE_SPEED*10) {                             
     for (int i = 0; i < 16; i++) {
       targetPalette[i] = CHSV(random8(), 255, 255);
     }
@@ -319,8 +336,8 @@ void sound_wave() {
   EVERY_N_MILLIS_I(thistimer,20) {                            // For fun, let's make the animation have a variable rate.
     uint8_t timeval = beatsin8(10,20,50);                     // Use a sinewave for the line below. Could also use peak/beat detection.
     thistimer.setPeriod(timeval);                             // Allows you to change how often this routine runs.
-    //fadeToBlackBy(leds, NUMPIXELS, 16);                        // 1 = slow, 255 = fast fade. Depending on the faderate, the LED's further away will fade out.
-    fadeToBlackBy(leds, NUMPIXELS, GHUE_SPEED/3);                        // 1 = slow, 255 = fast fade. Depending on the faderate, the LED's further away will fade out.
+    //fadeToBlackBy(leds, NUMPIXELS, 16);                     // 1 = slow, 255 = fast fade. Depending on the faderate, the LED's further away will fade out.
+    fadeToBlackBy(leds, NUMPIXELS, GHUE_SPEED/3);             // 1 = slow, 255 = fast fade. Depending on the faderate, the LED's further away will fade out.
     getSample();
     agcAvg();
     sndwave();
@@ -333,12 +350,11 @@ void sound_wave() {
 // COOLING: How much does the air cool as it rises?
 // Less cooling = taller flames.  More cooling = shorter flames.
 // Default 50, suggested range 20-100 
-// #define COOLING  55
 static uint8_t COOLING = 55;
 // SPARKING: What chance (out of 255) is there that a new spark will be lit?
 // Higher chance = more roaring fire.  Lower chance = more flickery fire.
 // Default 120, suggested range 50-200.
-#define SPARKING 120
+#define SPARKING 140
 
 void fire()
 {
@@ -396,16 +412,21 @@ void runningOutside() {
 }
 
 void outside_sound() {
-  getSample();                                                // Sample the microphone.
-  agcAvg();                                                   // Calculate the adjusted value as sampleAvg.
 
-  FastLED.clear();
-  for (int i=0; i<ARRAY_SIZE(outer_ring); i++) {
-    CHSV c = rgb2hsv_approximate( color );
-    c.v = sampleAgc;
-    leds[outer_ring[i]] = c;
+  EVERY_N_MILLIS(40) {
+    getSample();                                                // Sample the microphone.
+    agcAvg();                                                   // Calculate the adjusted value as sampleAvg.
+    //Serial.print("S: ");
+    //Serial.println(sampleAgc);
+
+    FastLED.clear();
+    for (int i=0; i<ARRAY_SIZE(outer_ring); i++) {
+      CHSV c = rgb2hsv_approximate( color );
+      c.v = sampleAgc;
+      leds[outer_ring[i]] = c;
+    }
+    FastLED.show();
   }
-  FastLED.show();
 }
 
 void outside() {
@@ -420,6 +441,96 @@ void outside(CRGB color) {
   setColor(color);
   outside();
 }
+
+void sound_sample()  {
+  //  agcAvg_Pal * By: Andrew Tuline
+
+  EVERY_N_MILLISECONDS(GHUE_SPEED*10) {
+    uint8_t maxChanges = 24;
+    nblendPaletteTowardPalette(currentPalette, targetPalette, maxChanges);   // AWESOME palette blending capability.
+  }
+
+  EVERY_N_MILLIS(10) {
+    fadeToBlackBy(leds, NUMPIXELS, 4);                     // 8 bit, 1 = slow, 255 = fast
+    fadeToBlackBy(leds, 1, 32);    
+  }
+  
+  EVERY_N_SECONDS(5) {                                                                      // Change the target palette to a random one every 5 seconds.
+    static uint8_t baseC = random8();                                                       // You can use this as a baseline colour if you want similar hues in the next line.
+    targetPalette = CRGBPalette16(CHSV(random8(), 255, random8(128, 255)), CHSV(random8(), 255, random8(128, 255)), CHSV(random8(), 192, random8(128, 255)), CHSV(random8(), 255, random8(128, 255)));
+  }
+
+  getSample();                                                // Sample the microphone.
+  agcAvg();                                                   // Calculate the adjusted value as sampleAvg.
+  
+  if (samplePeak == 1) { leds[0] = CRGB::Gray; samplePeak = 0;}
+  leds[(millis() % (NUMPIXELS-1)) +1] = ColorFromPalette(currentPalette, sampleAgc, sampleAgc, currentBlending);
+ 
+  FastLED.show();
+
+}
+
+// https://wokwi.com/projects/289979978497393160
+// Quite boring
+byte i,t,u;
+void sindots() {
+    t=millis()/15;
+    u=t-10;
+    for(i=4;i--;)   // how thick the line is 
+      leds[XY(sin8(t+i*2)/16,sin8(u+i*2)/32)].setHue(t);  // sin = [0,255] divide by 16 and 32 to fill the heart
+    for(i=4;i--;)
+      leds[XY(WIDTH-(sin8(t+i*2)/16),sin8(u+i*2)/32)].setHue(t);
+
+    blur2d(leds,32,32,32);
+    LEDS.show();
+}
+
+//  https://wokwi.com/projects/288441747546046984
+void mydrawLine (byte x, byte y, byte x1, byte y1, CRGB color, bool dot){   // my ugly line draw function )))
+  byte xsteps = abs8(x-x1)+1;  
+  byte ysteps = abs8(y-y1)+1;
+  byte steps =  xsteps >= ysteps? xsteps:ysteps;
+
+  for (byte i = 1; i <= steps; i++) {
+    byte dx = lerp8by8 (x, x1, i*255/steps);
+    byte dy = lerp8by8 (y, y1, i*255/steps);
+    leds[XY(dx, dy)] += color;    // change to += for brightness look
+  }
+
+  if (dot) {     //add white point at the ends of line 
+    leds[XY(x,y)] += CRGB ::White;
+    leds[XY(x1,y1)] += CRGB ::White;
+  }
+}
+
+void flyingcircular() {
+
+  byte x1 = beatsin8 (18, 0, (WIDTH-1));
+  byte x2 = beatsin8 (23, 0, (WIDTH-1)); 
+  byte x3 = beatsin8 (27, 0, (WIDTH-1)); 
+  byte x4 = beatsin8 (31, 0, (WIDTH-1)); 
+
+  byte y1 = beatsin8 (20, 0, (HEIGHT-1)); 
+  byte y2 = beatsin8 (26, 0, (HEIGHT-1));
+  byte y3 = beatsin8 (15, 0, (HEIGHT-1));
+  byte y4 = beatsin8 (27, 0, (HEIGHT-1));
+
+  CRGB color = CHSV (gHue,255,BRIGHTNESS);
+
+  fadeToBlackBy (leds, NUMPIXELS, 30 );
+
+  mydrawLine(x1, y1,  x2, y2, color,1);
+  mydrawLine(x2, y2,  x3, y3, color,1);
+  mydrawLine(x2, y2,  x4, y4, color,1);
+  mydrawLine(x3, y3,  x4, y4, color,1);
+  mydrawLine(x3, y3,  x1, y1, color,1);
+  mydrawLine(x4, y4,  x1, y1, color,1);
+
+  blur2d (leds, WIDTH, HEIGHT, 64 );
+  
+  FastLED.show();
+
+} 
 
 
 // https://wokwi.com/projects/287675911209222664
@@ -528,11 +639,15 @@ struct SimplePatternList {
 };
 
 SimplePatternList gPatterns[] = { 
-                                {nervous, "Nervous"},
                                 {outside_sound, "Outside Sound"},
+                                {flyingcircular, "Flying Circular"},
+                                {sound_sample, "Sound Sample"},
+                                {nervous, "Nervous"},
                                 {sound_wave_color, "Sound Wave Based on Color"},
+                                {flyingcircular, "Flying Circular"},
                                 {bpm_rings, "BMP with Rings"},
                                 {fire, "Fire"},
+                                {sindots, "Sin Dot"},
                                 {sound_wave, "Sound Wave"},
                                 {sound_show, "Sound Show"},
                                 {outside, "Outside Only"},
