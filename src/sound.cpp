@@ -11,12 +11,22 @@ uint8_t targetAgc = 60;                                       // This is our set
 bool samplePeak = 0;                                          // Boolean flag for peak. Responding routine must reset this flag.
 int sampleAgc, multAgc;
 
+void setup_sound() {
+  // https://www.atomic14.com/2020/09/12/esp32-audio-input.html
+
+  pinMode(MIC_PIN, INPUT);
+}
+
+
 void getSample() {
   
   int16_t micIn;                                              // Current sample starts with negative values and large values, which is why it's 16 bit signed.
   static long peakTime;
   
-  micIn = analogRead(MIC_PIN);                                // Poor man's analog Read.
+  micIn = analogRead(MIC_PIN)/4;                                // Poor man's analog Read. // div by 4 for ESP32
+
+  Serial.print(micIn);
+  Serial.print(" ");
   micLev = ((micLev * 31) + micIn) / 32;                      // Smooth it out over the last 32 samples for automatic centering.
   micIn -= micLev;                                            // Let's center it to 0 now.
   micIn = abs(micIn);                                         // And get the absolute value of each sample.
@@ -41,16 +51,17 @@ void agcAvg() {                                                   // A simple av
   if (sampleAgc > 255) sampleAgc = 255;
 
 //------------ Oscilloscope output ---------------------------
-//  Serial.print(targetAgc); Serial.print(" ");
-//  Serial.print(multAgc); Serial.print(" ");
-//  Serial.print(sampleAgc); Serial.print(" ");
+  //Serial.print(targetAgc); Serial.print(" ");
+  //Serial.print(multAgc); Serial.print(" ");
+   Serial.print(sampleAgc); Serial.print(" ");
 
-//  Serial.print(sample); Serial.print(" ");
-//  Serial.print(sampleAvg); Serial.print(" ");
+  Serial.print(sample); Serial.print(" ");
+  //Serial.print(sampleAvg); Serial.print(" ");
 //  Serial.print(micLev); Serial.print(" ");
 //  Serial.print(samplePeak); Serial.print(" "); samplePeak = 0;
 //  Serial.print(100); Serial.print(" ");
 //  Serial.print(0); Serial.print(" ");
+Serial.println();
 
 } // agcAvg()
 
