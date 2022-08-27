@@ -11,11 +11,11 @@
   #include <avr/power.h>
 #endif
 
+#define PATTERN_RUNTIME_MAX (100)          // seconds -- used for manual change
+#define DEfAULT_PATTERN_RUNTIME (100)      // seconds
 
-#define PATTERN_RUNTIME_MAX (100)      // seconds
-
-bool random_pattern = true;       // default is false
-uint8_t pattern_runtime = 10;        // seconds
+bool random_pattern = true;                               // default is false
+uint8_t pattern_runtime = DEfAULT_PATTERN_RUNTIME;        // seconds 
 
 void setup() {
   
@@ -34,14 +34,14 @@ void setup() {
 
 }
 
-void decrease_pattern_runtime(bool show_indicator = true) {
+void increase_pattern_runtime(bool show_indicator = true) {
   if (pattern_runtime < PATTERN_RUNTIME_MAX - 10)
     pattern_runtime += 10;
   if (show_indicator) 
     indicator(pattern_runtime, PATTERN_RUNTIME_MAX, CRGB::Green);
 }
 
-void increase_pattern_runtime(bool show_indicator = true) {
+void decrease_pattern_runtime(bool show_indicator = true) {
   if (pattern_runtime > 10)
     pattern_runtime -= 10;
   if (show_indicator) 
@@ -52,22 +52,25 @@ void loop() {
 
   // when we are on random pattern, keep advancing
   if (random_pattern) {
-    EVERY_N_SECONDS_I(patternTimer,100) {     // TODO - set back to 10
-      uint8_t timeval = pattern_runtime;
-      patternTimer.setPeriod(timeval);                             
+    EVERY_N_SECONDS_I(patternTimer, DEfAULT_PATTERN_RUNTIME) {   // change show every n seconds 
+      patternTimer.setPeriod(pattern_runtime);                             
       nextPattern();
     }
   }
 
   uint32_t ir = read_ir();
   if (ir == Next_Show) {
-        Serial.println(F("RED - Next Show"));
+        Serial.println(F("Next Show"));
+        // reset_bt_timeout();       // if we were nervous, we would timeout in 2 minutes, but if IR was used, reset that
         nextPattern();
         random_pattern = false;   // switch into manual mode until explicitly asked again
+        set_overwrite_nervous();
   } else if (ir == Prev_Show) {
-        Serial.println(F("Green - Previous Show")); 
+        Serial.println(F("Previous Show")); 
+        // reset_bt_timeout();       // if we were nervous, we would timeout in 2 minutes, but if IR was used, reset that
         previousPattern();
         random_pattern = false;   // switch into manual mode until explicitly asked again
+        set_overwrite_nervous();
   } else if (ir == Bright_Down) {
         Serial.println(F("Decrease Brightness")); 
         decreaseBrightness();
@@ -77,14 +80,19 @@ void loop() {
   } else if (ir == Randomize_Pattern) {
         Serial.println(F("Randomize Pattern")); 
         random_pattern = true;
+        set_overwrite_nervous();
   } else if (ir == Color_White) {
         // this only sets the color for some of the shows, not changing show
         Serial.println(F("Color White")); 
         white();
+        solid();
+        random_pattern = false;   // switch into manual mode until explicitly asked again
+        set_overwrite_nervous();
   } else if (ir == Color_Red) {
         // this only sets the color for some of the shows, not changing show
         Serial.println(F("Color Red")); 
         red();
+        set_overwrite_nervous();
   } else if (ir == Color_Blue) {
         // this only sets the color for some of the shows, not changing show
         Serial.println(F("Color Blue")); 
@@ -110,25 +118,19 @@ void loop() {
         Serial.println(pattern_runtime);
   }
 
-  timer.tick();
+  timer.tick();   // pattern_timer
 
   // we only scan if we are not the server, but the ble_lib will check for that
   EVERY_N_SECONDS(5) {
     ble_scan();
   }
 
-  if (ble_loop()) {
-    // go nervous
-    nervous(get_sender());      // whether sender or recipient, aka raffy or whit
+  if (ble_loop()) {               // true if connected and not within certain time of having been nervous already
+    nervous(get_sender());        // whether sender or recipient, aka raffy or whit
+    random_pattern = false;
   } else {
     updatePattern();
   }
-
-  /*
-  EVERY_N_MILLISECONDS(500) {
-    Serial.println("500 msec");
-  }
-  */
 
   // for input button
   //void touchAttachInterrupt(uint8_t pin, void (*userFunc)(void), uint16_t threshold);

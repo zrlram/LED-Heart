@@ -10,69 +10,74 @@
 #include <BLEUtils.h>
 #include <BLEScan.h>
 #include <BLEAdvertisedDevice.h>
-#include "BLEBeacon.h"
 #include "esp_sleep.h"
+#include "arduino-timer.h"
 
 #define RSSI_THRESHOLD (-40)
 #define SCAN_TIME (3)     // scan for 3 seconds every now and then 
 
 bool device_found = false;
 bool connected = false;
+bool overwrite_nervous = false;
+bool _just_disconnected = false;
+
+auto bt_timeout = timer_create_default();        // we are only nervous for a given time
+// auto nervous_timeout = timer_create_default();   // we want to prevent from being nervous and then nervous right away
 
 // String knownBLEAddresses[] = {"78:21:84:7c:1c:76", "30:c6:f7:1e:28:b6"}; // lowercase!
-static BLEAddress serverAddress = BLEAddress("78:21:84:7c:1c:76");
+// static BLEAddress serverAddress = BLEAddress("78:21:84:7c:1c:76");
 // #define ENDIAN_CHANGE_U16(x) ((((x)&0xFF00) >> 8) + (((x)&0xFF) << 8))
-
-// #define GPIO_DEEP_SLEEP_DURATION     10  // sleep x seconds and then wake up
-// RTC_DATA_ATTR static time_t last;        // remember last boot in RTC Memory
-// RTC_DATA_ATTR static uint32_t bootcount; // remember number of boots in RTC Memory
 
 BLEAddress *pServerAddress;
 BLEScan* pBLEScan;
+BLEClient* pClient;
 BLEService *pService;
 BLECharacteristic *pCharacteristic;
 BLEAdvertising *pAdvertising;   // BLE Advertisement type
 
-#define SERVICE_UUID              "31337000-1fb5-459e-8fcc-c5c9c331914b"
+#define SERVICE_UUID               "31337000-1fb5-459e-8fcc-c5c9c331914b"
+static BLEUUID service_UUID        ("31337000-1fb5-459e-8fcc-c5c9c331914b");
 #define CHARACTERISTIC_UUID        "31337000-1fb5-459e-8fcc-c5c9c331914b"
-#define SERVERNAME      "THEHEART"
+#define SERVERNAME                 "THEHEART"
 
-/*
-#define BEACON_UUID           "31337000-1fb5-459e-8fcc-c5c9c331914b"
-
-void setBeacon() {
-
-  BLEBeacon oBeacon = BLEBeacon();
-  oBeacon.setManufacturerId(0x4C00); // fake Apple 0x004C LSB (ENDIAN_CHANGE_U16!)
-  oBeacon.setProximityUUID(BLEUUID(BEACON_UUID));
-  oBeacon.setMajor((bootcount & 0xFFFF0000) >> 16);
-  oBeacon.setMinor(bootcount & 0xFFFF);
-  BLEAdvertisementData oAdvertisementData = BLEAdvertisementData();
-  BLEAdvertisementData oScanResponseData = BLEAdvertisementData();
-  oAdvertisementData.setFlags(0x04); // BR_EDR_NOT_SUPPORTED 0x04
-
-  std::string strServiceData = "";
-
-  strServiceData += (char)26;     // Len
-  strServiceData += (char)0xFF;   // Type
-  strServiceData += oBeacon.getData();
-  oAdvertisementData.addData(strServiceData);
-
-  pAdvertising->setAdvertisementData(oAdvertisementData);
-  // pAdvertising->setScanResponseData(oScanResponseData);
-  pAdvertising->setAdvertisementType(ADV_TYPE_NONCONN_IND);
-
-
+bool clear_overwrite_nervous(void *) {
+  _just_disconnected = false;
+  Serial.println("Clear just_disconnected");
+  return false;
 }
 
-*/
+// used to reset the timer back after 2 minutes after we just disconnected
+void just_disconnected() {
+  _just_disconnected = true;
+
+  if (bt_timeout.empty()) {        // if there is not an actual timer already - don't want to overwrite the existing one
+    // bt_timeout.cancel();
+    bt_timeout.in(120000, clear_overwrite_nervous);
+    Serial.println("Setting up just_disconnected");
+  }
+}
+
+/* https://github.com/espressif/arduino-esp32/blob/master/libraries/BLE/examples/BLE_client/BLE_client.ino */
+class MyClientCallback : public BLEClientCallbacks {
+  void onConnect(BLEClient* pclient) {
+  }
+
+  void onDisconnect(BLEClient* pclient) {
+    connected = false;
+    overwrite_nervous = false;
+    just_disconnected();
+    Serial.println("Client - onDisconnect");
+  }
+};
 
 bool connectToServer(BLEAddress pAddress) {
 
   Serial.print("Forming a connection to: ");
   Serial.print(pAddress.toString().c_str());
 
-  BLEClient*  pClient  = BLEDevice::createClient();
+  pClient  = BLEDevice::createClient();
+  pClient->setClientCallbacks(new MyClientCallback());
+
   bool res = pClient->connect(pAddress);
   Serial.print(" - Connected to server status: ");
   Serial.print(res);
@@ -82,103 +87,49 @@ bool connectToServer(BLEAddress pAddress) {
 
   return res;
 
-  /* THIS CODE IS PRETTY BAD - 
-     https://esp32.com/viewtopic.php?t=4350
-
-  // Obtain a reference to the service we are after in the remote BLE server.
-  BLERemoteService* pRemoteService = pClient->getService(serviceUUID);
-  if (pRemoteService == nullptr) {
-    Serial.print("Failed to find our service UUID: ");
-    Serial.println(serviceUUID.toString().c_str());
-    return;
-  }
-
-  // Obtain a reference to the characteristic in the service of the remote BLE server.
-  notifyChar = pRemoteService->getCharacteristic(notifyUUID);
-  writeChar = pRemoteService->getCharacteristic(writeUUID);
-
-  if (notifyChar == nullptr) {
-    Serial.print("Failed to find our characteristic UUID: ");
-    Serial.println(notifyUUID.toString().c_str());
-    return;
-  }
-  
-  // Read the value of the characteristic.
-  std::string value = notifyChar->readValue();
-  Serial.print("The characteristic value was: ");
-  Serial.println(value.c_str());
-  
-  result = value.c_str();
-  
-  notifyChar->registerForNotify(notifyCallback);
-  Serial.println("Done connecting");
-  delay(400);
-  */
 }
 
 class MyAdvertisedDeviceCallbacks: public BLEAdvertisedDeviceCallbacks {
 
     void onResult(BLEAdvertisedDevice advertisedDevice) {
       
-    // Serial.printf("Advertised Device: %s \n", advertisedDevice.toString().c_str());
+      // Serial.printf("Advertised Device: %s \n", advertisedDevice.toString().c_str());
  
-      /*
-      if (!advertisedDevice.haveServiceUUID())
-      {
-        if (advertisedDevice.haveManufacturerData() == true)
-        {
-          std::string strManufacturerData = advertisedDevice.getManufacturerData();
+      if (advertisedDevice.haveServiceUUID() && advertisedDevice.isAdvertisingService(service_UUID)) {
 
-          uint8_t cManufacturerData[100];
-          strManufacturerData.copy((char *)cManufacturerData, strManufacturerData.length(), 0);
+        Serial.printf("Advertised Device: %s \n", advertisedDevice.toString().c_str());
 
-          if (strManufacturerData.length() == 25 && cManufacturerData[0] == 0x4C && cManufacturerData[1] == 0x00)
-          {
-            //Serial.print("RSSI: ");
-            //Serial.println(advertisedDevice.getRSSI());
-            //BLEBeacon oBeacon = BLEBeacon();
-            //oBeacon.setData(strManufacturerData);
-            //Serial.printf("ID: %04X Major: %d Minor: %d UUID: %s Power: %d\n", oBeacon.getManufacturerId(), ENDIAN_CHANGE_U16(oBeacon.getMajor()), ENDIAN_CHANGE_U16(oBeacon.getMinor()), oBeacon.getProximityUUID().toString().c_str(), oBeacon.getSignalPower());
-            device_found = true;
-          }
-        }
-        return;
-      }
-      */
+        /*
+          Serial.println(advertisedDevice.getName().c_str());
+          Serial.println(advertisedDevice.getAddress().toString().c_str());
+        */
 
-      // Serial.println(advertisedDevice.getName().c_str());
-      // Serial.println(advertisedDevice.getAddress().toString().c_str());
-
-      // TODO: Fix to use the SERVERNAME - somehow not advertised by the server
-      // if (advertisedDevice.getName() == SERVERNAME) { //Check if the name of the advertiser matches
-      // DOES THIS WORK ??
-      // if (advertisedDevice.haveServiceUUID() && advertisedDevice.getServiceUUID().equals(serviceUUID)) {
-
-      if (advertisedDevice.getAddress().equals(serverAddress)) { //Check if the name of the advertiser matches
-
-          Serial.println(advertisedDevice.getRSSI());
-
-          if (advertisedDevice.getRSSI() < RSSI_THRESHOLD) {
+        if (advertisedDevice.getRSSI() < RSSI_THRESHOLD) {
             device_found = true;
             pServerAddress = new BLEAddress(advertisedDevice.getAddress()); //Address of advertiser is the one we need
-          } 
-          advertisedDevice.getScan()->stop(); // stop scanning anyways. We know we found our partner, but it's too far away
+        } 
+        advertisedDevice.getScan()->stop(); // stop scanning anyways. We know we found our partner, but it's too far away
       }
     }
 };
 
+/* For the server */
 // https://randomnerdtutorials.com/esp32-ble-server-client/
-class MyServerCallbacks: public BLEServerCallbacks {
+// and: https://github.com/espressif/arduino-esp32/blob/master/libraries/BLE/examples/BLE_server_multiconnect/BLE_server_multiconnect.ino
+class MyServerCallbacks: public BLEServerCallbacks { 
 
   void onConnect(BLEServer* pServer) {
     Serial.println("SERVER _ NERVOUS _ CLIENT CONN");
-    device_found = true;
     connected = true;
   };
 
   void onDisconnect(BLEServer* pServer) {
-    device_found = false;
+    Serial.println("Disconnecting from Client");
     connected = false;
+    overwrite_nervous = false;
+    just_disconnected();
+
+    pServer->getAdvertising()->start();
   }
 
 };
@@ -188,13 +139,6 @@ bool get_sender() {
 }
 
 void setup_ble() {
-
-    // gettimeofday(&now, NULL);
-    //Serial.printf("start ESP32 %d\n", bootcount++);
-    //Serial.printf("deep sleep (%lds since last reset, %lds since last boot)\n", now.tv_sec, now.tv_sec - last);
-    // last = now.tv_sec;
-
-  
 
     if (is_server()) {
         BLEDevice::init(SERVERNAME);
@@ -210,22 +154,11 @@ void setup_ble() {
         pService->start();
         pAdvertising = BLEDevice::getAdvertising();
         pAdvertising->addServiceUUID(SERVICE_UUID);
-        // setBeacon();
+        pAdvertising->setScanResponse(true);
+        pAdvertising->setMinPreferred(0x06);  // functions that help with iPhone connections issue
+        pAdvertising->setMinPreferred(0x12);
         pServer->getAdvertising()->start();
-
-        // pAdvertising->start();
-
-        //pAdvertising->addServiceUUID(SERVICE_UUID);
-        //pAdvertising->setScanResponse(true);
-        //pAdvertising->setMinPreferred(0x06);  // functions that help with iPhone connections issue
-        //pAdvertising->setMinPreferred(0x12);
         Serial.println("Advertizing started...");
-        // delay(100);
-        /* pAdvertising->stop();
-        Serial.printf("enter deep sleep\n");
-        esp_deep_sleep(1000000LL * GPIO_DEEP_SLEEP_DURATION);
-        Serial.printf("in deep sleep\n");
-        */
 
     } else {
 
@@ -247,7 +180,6 @@ void setup_ble() {
 void ble_scan() {
   // start or continue the scan
 
-  // TODO: Should this be true not false here?
   if (!is_server() && !connected) {
     pBLEScan->start(SCAN_TIME, nullptr, true);    // https://github.com/espressif/arduino-esp32/issues/6090
     Serial.println("BLE_Scan");
@@ -255,31 +187,64 @@ void ble_scan() {
 
 }
 
+void set_overwrite_nervous() {
+  overwrite_nervous = true;
+  //just_disconnected();                            // just reset all these variables in two minutes as well
+
+}
+
+
+/* return: true if connected and wasn't overwritten by IR
+           false if not connected or in overwrite mode       */
 bool ble_loop() {
 
-  if (connected) {
+  bt_timeout.tick();
+
+  /*
+  Serial.print(_just_disconnected);
+  Serial.print(" ");
+  Serial.print(overwrite_nervous);
+  Serial.print(" ");
+  Serial.print(connected);
+  Serial.print(" ");
+  Serial.println(device_found);
+  */
+
+
+
+  // there is a two minute grace period when we disconnect before we get nervous again
+  if (_just_disconnected) {
+    return false;
+  }
+
+  // only return true when we are not in 'overwrite mode'
+  // meaning, we are still connected, but IR was used to overwrite
+  // overwrite_nervous is overwritten when we lose connectivity
+  if (connected && !overwrite_nervous) {
+    // check timer to see if we should go into random mode and return a connected of false
+    /* 
+    if (!is_server() && pClient->isConnected()) {
+      Serial.print(" - RSSI: ");
+      Serial.println(pClient->getRssi());
+    }
+    */
     return true;
   }
 
-  if (device_found) {
+  if (device_found) {     // client code
     if (connectToServer(*pServerAddress))  {      
-
       connected = true;
-
+      // we are keeping track of being nervous and reset that after 2 minutes 
+      // bt_timeout.cancel();
+      // bt_timeout.in(120000, clear_overwrite_nervous);       // in milliseconds 1000 = 1 sec - this is 2 minutes
     } else {
       Serial.println("Connecting to Server failed");
       connected = false;
     }
-    device_found = false;
+    device_found = false;     // reset scanning
     pBLEScan->clearResults();
-    return true;
+    return connected;
   } 
-
-  /*
-  if (!connected && !device_found) {
-    return false; 
-  }
-  */
 
   return false;
 

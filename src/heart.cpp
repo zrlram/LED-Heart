@@ -55,14 +55,14 @@ void setup_heart() {
       Bright_Up = Button_BrightUp; 
       Randomize_Pattern = Button_Flash;
       Color_White = Button_White;
-      Color_Red = Button_Red;
+      Color_Red = Button_1;         // NULL
       Color_Blue = Button_Blue;
-      Blending_Overlay = Button_Flash;
+      Blending_Overlay = Button_Strobe;
       Off = Button_Off;
-      Speed_Dec = Button_LightOrange;
+      Speed_Dec = Button_Orange;
       Speed_Inc = Button_LightGreen;
-      Runtime_Dec = Button_Orange;
-      Runtime_Inc = Button_LightBlue;
+      Runtime_Dec = Button_LightRed;
+      Runtime_Inc = Button_LightLightBlue;
 
     } else {
       // setup the narrow IR
@@ -81,6 +81,6 @@ void setup_heart() {
       Runtime_Dec = Button_1;
       Runtime_Inc = Button_2;
 
-    }
+   }
 
 }

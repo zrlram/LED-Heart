@@ -2,7 +2,16 @@
 #include <sound.h>
 #include <heart.h>
 
-uint8_t squelch = 7;                                          // Anything below this is background noise, so we'll make it '0'.
+/* 
+  Other things to read about / look at:
+
+  Different schematics and code for breat detection
+    https://create.arduino.cc/projecthub/mamifero/arduino-beat-detector-d0a21f
+
+*/
+
+// TODO - play with squelch??? to suppress some more noise?
+uint8_t squelch = 7;                                          // Anything below this is background noise, so we'll make it '0'. Was 7
 int sample;                                                   // Current sample.
 float sampleAvg = 0;                                          // Smoothed Average.
 float micLev = 0;                                             // Used to convert returned value to have '0' as minimum.
@@ -23,10 +32,10 @@ void getSample() {
   int16_t micIn;                                              // Current sample starts with negative values and large values, which is why it's 16 bit signed.
   static long peakTime;
   
-  micIn = analogRead(MIC_PIN)/4;                                // Poor man's analog Read. // div by 4 for ESP32
+  micIn = analogRead(MIC_PIN)/4.0;                                // Poor man's analog Read. // div by 4 for ESP32 - [0, 1024]
 
-  Serial.print(micIn);
-  Serial.print(" ");
+  // Serial.print(micIn);
+  // Serial.print(" ");
   micLev = ((micLev * 31) + micIn) / 32;                      // Smooth it out over the last 32 samples for automatic centering.
   micIn -= micLev;                                            // Let's center it to 0 now.
   micIn = abs(micIn);                                         // And get the absolute value of each sample.
@@ -37,6 +46,7 @@ void getSample() {
     samplePeak = 1;
     peakTime=millis();
   }                                                           // Then we got a peak, else we don't. Display routines need to reset the samplepeak value in case they miss the trigger.
+  // Serial.println();
   
 }  // getSample()
 
@@ -53,15 +63,15 @@ void agcAvg() {                                                   // A simple av
 //------------ Oscilloscope output ---------------------------
   //Serial.print(targetAgc); Serial.print(" ");
   //Serial.print(multAgc); Serial.print(" ");
-   Serial.print(sampleAgc); Serial.print(" ");
+   //Serial.print(sampleAgc); Serial.print(" ");
 
-  Serial.print(sample); Serial.print(" ");
+  //Serial.print(sample); Serial.print(" ");
   //Serial.print(sampleAvg); Serial.print(" ");
 //  Serial.print(micLev); Serial.print(" ");
-//  Serial.print(samplePeak); Serial.print(" "); samplePeak = 0;
+  //if (samplePeak) Serial.print(samplePeak*100); Serial.print(" "); 
 //  Serial.print(100); Serial.print(" ");
 //  Serial.print(0); Serial.print(" ");
-Serial.println();
+if (DEBUG) Serial.println();
 
 } // agcAvg()
 

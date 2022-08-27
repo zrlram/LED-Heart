@@ -10,11 +10,12 @@
 #include <sound.h>
 #include <FastLED.h>
 #include "arduino-timer.h"
+#include <averagesContainer.h>
+#include <fscale.h>
 
 #define ARRAY_SIZE(A) (sizeof(A) / sizeof((A)[0]))
 
-#define STATIC_PATTERN (254)
-
+static bool static_pattern = false;      // if we don't want to have the pattern updated 
 static uint16_t GHUE_SPEED = 50;       // ms to increase gHue   0 - 1000 in 50 steps
 
 static uint8_t gHue = 0;
@@ -84,6 +85,7 @@ void solid() {
       leds[i] = color;
     }
     FastLED.show();
+    static_pattern = true;
 }
 
 void white() {
@@ -108,7 +110,6 @@ void draw_little_heart() {
     leds[little_heart[i]] = CRGB::Red;
   }
 }
-
 
 void rainbowCircles() {
     for (int i=0; i<NUMPIXELS; i++) {
@@ -250,32 +251,6 @@ void pride()
   }
 }
 
-
-void decreaseBrightness(bool show_indicator = true) {
-  uint8_t b = FastLED.getBrightness();
-  if (show_indicator) indicator(b, 255);
-  if (b > 10)
-    FastLED.setBrightness(b - 10);
-}
-
-void increaseBrightness(bool show_indicator = true) {
-  uint8_t b = FastLED.getBrightness();
-  if (show_indicator) indicator(b, 255);
-  if (b < 245)
-    FastLED.setBrightness(b + 10);
-}
-
-void set_blending_overlay() {
-  if (gOverlayPattern == 0) {
-    gOverlayPattern = 255;      // turn off if it was on
-  } else 
-    gOverlayPattern = 0;
-}
-
-void blending_overal_off() {
-  gOverlayPattern = 255;
-}
-
 // Helper Function
 void sndwave() {
   // https://github.com/atuline/FastLED-SoundReactive/blob/master/sound_wave/sound_wave.ino
@@ -320,12 +295,12 @@ void sound_wave_color() {
 
 void sound_wave() {
 
-  // TODO: Try - this was every 5 seconds
   // EVERY_N_SECONDS(5) {                                     // Change the palette every 5 seconds.
-  EVERY_N_MILLIS(GHUE_SPEED*10) {                             
-    for (int i = 0; i < 16; i++) {
-      targetPalette[i] = CHSV(random8(), 255, 255);
-    }
+  EVERY_N_MILLIS_I(sound_wave_timer, GHUE_SPEED*10) {
+      sound_wave_timer.setPeriod(GHUE_SPEED*10);  
+      for (int i = 0; i < 16; i++) {
+        targetPalette[i] = CHSV(random8(), 255, 255);
+      }
   }
   
   EVERY_N_MILLISECONDS(100) {                                 // AWESOME palette blending capability once they do change.
@@ -347,6 +322,79 @@ void sound_wave() {
 
 } 
 
+/* https://wokwi.com/projects/288948170884383245 */
+void matrix() {
+  static byte rain[NUMPIXELS];
+  static byte init = false;
+
+  if (!init) {
+    // init - run once
+    for (int i = 0; i < NUMPIXELS; i++) rain[i] = !random8(15)? 1:0; 
+    init = true;
+  }
+
+  EVERY_N_MILLISECONDS(80) {
+    static int speed = 1;
+
+    for (byte j = 0; j < HEIGHT; j++) {
+      int yindex=(j + speed) % HEIGHT*WIDTH;
+      for (byte i = 0; i < WIDTH; i++) {
+        byte layer = rain[yindex+i];   
+        if (layer) leds[XY((WIDTH - 1) - i, (HEIGHT - 1) - j)].setHue (100);
+      }
+    }
+
+    fadeToBlackBy(leds, 256, 30);
+    speed ++;
+  }
+
+  EVERY_N_MILLISECONDS(15) {
+    int rand1 = random16 (NUMPIXELS);
+    int rand2 = random16 (NUMPIXELS);
+    if (rain[rand1] && !rain[rand2]) {rain[rand1] = 0; rain[rand2] = 1;}
+  }
+
+  FastLED.show();
+
+} 
+
+/* https://wokwi.com/projects/287764949564916236 */
+const uint8_t kBorderWidth = 1;
+
+void kriegsman_swirl()
+{
+  static uint8_t counter = 0 ;
+  // Apply some blurring to whatever's already on the matrix
+  // Note that we never actually clear the matrix, we just constantly
+  // blur it repeatedly.  Since the blurring is 'lossy', there's
+  // an automatic trend toward black -- by design.
+  if( counter % 3 == 0 ) {
+    uint8_t blurAmount = beatsin8(2, 100, 150);
+    blur2d( leds, WIDTH, HEIGHT, blurAmount);
+    // Serial.println(blurAmount);
+  }
+  counter++;
+
+  // Use two out-of-sync sine waves
+  uint8_t  i = beatsin8( 27, kBorderWidth, HEIGHT - kBorderWidth);
+  uint8_t  j = beatsin8( 41, kBorderWidth, WIDTH - kBorderWidth);
+
+  // Also calculate some reflections
+  uint8_t ni = (WIDTH - 1) - i;
+  uint8_t nj = (WIDTH - 1) - j;
+
+  // The color of each point shifts over time, each at a different speed.
+  uint16_t ms = millis();
+  leds[XY( i, j)] += CHSV( ms / 11, 255, 255);
+  leds[XY( j, i)] += CHSV( ms / 13, 255, 255);
+  leds[XY(ni, nj)] += CHSV( ms / 17, 255, 255);
+  leds[XY(nj, ni)] += CHSV( ms / 29, 255, 255);
+  leds[XY( i, nj)] += CHSV( ms / 37, 255, 255);
+  leds[XY(ni, j)] += CHSV( ms / 41, 255, 255);
+
+  FastLED.show();
+}
+
 // COOLING: How much does the air cool as it rises?
 // Less cooling = taller flames.  More cooling = shorter flames.
 // Default 50, suggested range 20-100 
@@ -360,7 +408,7 @@ void fire()
 {
   // https://github.com/FastLED/FastLED/blob/master/examples/Fire2012/Fire2012.ino
   static uint8_t heat[NUMPIXELS];
-  COOLING = GHUE_SPEED;    // TODO: Trying - was 55
+  COOLING = GHUE_SPEED;    
 
   // Step 1.  Cool down every cell a little
     for( int i = 0; i < NUMPIXELS; i++) {
@@ -443,9 +491,11 @@ void outside(CRGB color) {
 }
 
 void sound_sample()  {
+  // basically random dots sound animated 
   //  agcAvg_Pal * By: Andrew Tuline
 
-  EVERY_N_MILLISECONDS(GHUE_SPEED*10) {
+  EVERY_N_MILLIS_I(sound_sample_timer, GHUE_SPEED*10) {
+    sound_sample_timer.setPeriod(GHUE_SPEED*10);  
     uint8_t maxChanges = 24;
     nblendPaletteTowardPalette(currentPalette, targetPalette, maxChanges);   // AWESOME palette blending capability.
   }
@@ -485,7 +535,6 @@ void sindots() {
     LEDS.show();
 }
 
-//  https://wokwi.com/projects/288441747546046984
 void mydrawLine (byte x, byte y, byte x1, byte y1, CRGB color, bool dot){   // my ugly line draw function )))
   byte xsteps = abs8(x-x1)+1;  
   byte ysteps = abs8(y-y1)+1;
@@ -503,6 +552,7 @@ void mydrawLine (byte x, byte y, byte x1, byte y1, CRGB color, bool dot){   // m
   }
 }
 
+//  https://wokwi.com/projects/288441747546046984
 void flyingcircular() {
 
   byte x1 = beatsin8 (18, 0, (WIDTH-1));
@@ -579,10 +629,296 @@ void sinusoid() {
   
 }
 
-void nervous(bool is_sender=false) {
-  // what happens when flirted with
-  // Serial.println("pretending to be nervous");
+// https://wokwi.com/projects/289623420597961224
+// TODO - manipulated the code below quite a bit to use more built-in functions. Does it still look ok?
+    //    test out on the wokwi first?!
 
+#define RASTER_SPACING 2 // TODO - can we just set to 1?
+
+CRGBPalette16 fadeFactorPalette = {
+  0xAA0000, 0xAA0000, 0xAA0000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000,
+  0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000, 0x000000
+};
+
+void qaddColors(CRGB *a, const CRGB *b) {
+  a->red   = qadd8(a->red,b->red);
+  a->green = qadd8(a->green,b->green);
+  a->blue  = qadd8(a->blue,b->blue);
+}
+
+DEFINE_GRADIENT_PALETTE( Andy_GIlmore_2_gp ) {
+    0,  12,  0,  1,
+   36,  12,  0,  1,
+   73,  39,  3,  3,
+   98,  84, 13, 20,
+  122, 153, 91, 98,
+  128, 252,252,255,
+  135, 173,187,205,
+  158, 112,135,162,
+  181,  61, 63, 92,
+  218,  29, 21, 43,
+  255,  29, 21, 43};
+
+void sup(uint8_t rotationSpeed, uint8_t translationSpeed, uint8_t lineWidth, CRGBPalette16 palette, TBlendType blendType, boolean foreground, boolean enableCrossfade) {
+  uint32_t yHueDelta ;
+  uint32_t xHueDelta ;
+  static uint32_t lastMillis = 16383; // int16_t 32767/2  (for rotationspeed=0 test)
+  float rotationSpeedFloat = fmap((float)rotationSpeed,(float)0,(float)255,-6.0,6.0); // Between -6 and 6
+  int16_t mappedTranslationSpeed = map(translationSpeed,0,255,-2<<12,2<<12); // Between -2^13 - 2^13 (higher is too fast)
+
+  uint32_t ms = millis();
+
+  if( rotationSpeedFloat != 0 ) {
+    yHueDelta = (int32_t)sin16((int16_t)round(ms * rotationSpeedFloat)) * lineWidth;
+    xHueDelta = (int32_t)cos16((int16_t)round(ms * rotationSpeedFloat)) * lineWidth;
+    lastMillis = ms;
+  } else {
+    yHueDelta = (int32_t)sin16(lastMillis) * lineWidth;
+    xHueDelta = (int32_t)cos16(lastMillis) * lineWidth;
+  }
+  int32_t startHue = ms * mappedTranslationSpeed;
+  int32_t lineStartHue = startHue - (HEIGHT + 2) / 2 * yHueDelta;
+  int16_t yd2 = sin16(ms * 3) / 4;
+  int16_t xd2 = sin16(ms * 7) / 4;
+  for (byte y = 0; y < HEIGHT; y++) {
+    uint32_t pixelHue = lineStartHue - (WIDTH + 2) / 2 * xHueDelta;
+    uint32_t xhd = xHueDelta;
+    lineStartHue += yHueDelta;
+    for (byte x = 0; x < WIDTH; x++) {
+      if( y % RASTER_SPACING == 0 ) {
+        int ledsY = y/RASTER_SPACING;
+        if( foreground ) {
+          if( enableCrossfade ) {
+            CRGB fadeFactor = ColorFromPalette(fadeFactorPalette, pixelHue >> 7, 255, LINEARBLEND);
+            uint8_t this_fade = 255 - fadeFactor.red;
+            blend(leds[XY(x, ledsY)], palette[0], this_fade);
+          } else {
+            CRGB color2 = ColorFromPalette(palette, pixelHue >> 7, 255, LINEARBLEND);
+            qaddColors(&leds[XY(x, ledsY)], &color2);
+          }
+        } else {
+          leds[XY(x, ledsY)] = ColorFromPalette(palette, pixelHue >> 7, 255, blendType);
+        }      
+      }
+      pixelHue += xHueDelta;      
+    }
+  }
+}
+
+void spendida_crossfader() {
+    // sup(95,110,3,Andy_GIlmore_2_gp, LINEARBLEND, ANIM_BACKGROUND, DISABLE_CROSSFADE);
+    sup(95,110,3, Andy_GIlmore_2_gp, LINEARBLEND, false, false);
+}
+
+/* vu_meter ...
+    https://edg.berkeley.edu/wp-content/uploads/2020/12/2020Fall_ME102B_delainejonathan.pdf
+*/
+
+#define s_MIC_HIGH (600)
+#define s_MIC_LOW  (0)
+#define MIC_OFFSET (1923)   //From MATLAB processing
+#define BUFFER_DEV (400)
+
+struct averagesContainer *samples;
+struct averagesContainer *longsamples;
+struct averagesContainer *buffersamples;
+
+float hue = 0;
+float hueInc = 0.7;
+int hueOffset = 120;
+float fadeSc = 1.3;
+
+//Initialize class objects
+#define NUMSAMPLES (20)
+#define NUMLONGSAMPLES (250)
+#define BUFFER_SIZE (3)
+
+void vu_meter() { //Sound Reactive Vu Meter
+
+  Serial.println("start");
+  if (samples == NULL) {
+    samples = new averagesContainer(NUMSAMPLES);
+    longsamples = new averagesContainer(NUMLONGSAMPLES);
+    buffersamples = new averagesContainer(BUFFER_SIZE);
+    while (buffersamples->setSample(250) == true) {}
+    while (longsamples->setSample(200) == true) {}
+  }
+
+  int condraw = abs (analogRead(MIC_PIN) - MIC_OFFSET);   //Centers reading around zero, removes negative range
+  Serial.println(condraw);
+
+  // Attempt to use static calibration instead of dynamic
+  int bufferval = buffersamples->findAverage();
+  if (!(abs(condraw - bufferval) > BUFFER_DEV)) {
+    buffersamples->setSample(condraw);
+  }
+
+  // Scale conditioned signal to Log Scale with .4 scalar
+  condraw = fscale(s_MIC_LOW, s_MIC_HIGH, s_MIC_LOW, s_MIC_HIGH, condraw, 0.4);
+
+  if (samples->setSample(condraw))
+    return; //continue adding until full
+
+  uint16_t longsamplesAvg = longsamples->findAverage();
+  uint16_t inputVal = samples->findAverage();
+
+  longsamples->setSample(inputVal);
+
+  // Change hue of colors based on long term averages -- TODO - see how this looks!?
+  int diff = (inputVal - longsamplesAvg);
+  if (diff > 5) {
+    if (hue < 235) {
+      hue += hueInc;
+    }
+  } else if (diff < -5) {
+    if (hue > 2) {
+      hue -= hueInc;
+    }
+  } 
+
+  // TODO - is my math here right to fill up to HEIGHT?
+  int height = fscale(s_MIC_LOW, s_MIC_HIGH, 0.0, (float)HEIGHT, (float)inputVal, 0);
+  Serial.print("height: ");
+  Serial.println(height);
+
+  int end_pixel = 0;
+  for (int row=HEIGHT-1; row>HEIGHT-1-height; row--) {
+    end_pixel += ROWS[row];
+  }
+  Serial.print("end pixel: ");
+  Serial.println(end_pixel);
+  for (int i=NUMPIXELS; i > end_pixel; i--) {
+      leds[i] = CHSV(gHue + hueOffset + (i * 2), 255, FastLED.getBrightness());       // TODO last argument was max_bright
+      Serial.println(i);
+  }
+
+  for (int i=end_pixel; i > 0; i--) {
+      leds[i] = CRGB(leds[i].r / fadeSc, leds[i].g / fadeSc, leds[i].b / fadeSc);
+      Serial.println(i);
+  }
+
+}
+
+#define REDZONE (5)
+
+void sound_equalizer() {
+   static byte matrix[WIDTH] = { 0 };
+   unsigned static int signalMax = 0;
+   unsigned static int signalMin = 20;
+
+
+   // map 1v p-p level to the max scale of the display
+   EVERY_N_MILLIS(100) {
+    getSample();
+    agcAvg();
+    // do auto-scale
+    if (sampleAgc > signalMax) {
+      signalMax = sampleAgc;  // save just the max levels
+    } else if (sampleAgc < signalMin) {
+      signalMin = sampleAgc;  // save just the min levels
+    }
+
+    int displayPeak = map(sampleAgc, 0, 1023, 0, signalMax);
+    // Serial.println(displayPeak);
+
+    // Update the display:
+    for (int i = 0; i < WIDTH-1; i++)  // shift the display left
+    {
+      matrix[i] = matrix[i+1];
+    }
+
+    matrix[WIDTH-1] = displayPeak;   // add new sample
+
+    // draw the new sample
+    for (int i=0; i < WIDTH; i++) {
+        for (int j=0; j < HEIGHT; j++) {
+          if (j >= matrix[i]) {   // black
+            leds[XY(i,HEIGHT-j-1)] = CRGB::Black;
+          } else if (j < REDZONE) { 
+            leds[XY(i,HEIGHT-j-1)] = CRGB::LightGreen;
+          } else {
+            leds[XY(i, HEIGHT-j-1)] = CRGB::Purple;
+          }
+        }
+    }
+   }
+}
+
+// https://github.com/atuline/FastLED-SoundReactive/blob/master/sound_ripple/sound_ripple.ino
+int step = -1;                                                // -1 is the initializing step.
+uint8_t colour;                                               // Ripple colour is randomized.
+uint8_t myfade = 255;                                         // Starting brightness.
+#define maxsteps NUMELEMENTS(circleMatrix)                                           // Case statement wouldn't allow a variable.
+
+void sound_ripple() {
+
+  getSample();
+
+  if (samplePeak == 1) {step = -1; samplePeak = 0; }          // If we have a peak, let's reset our ripple.
+
+  fadeToBlackBy(leds, NUMPIXELS, 64);                          // 8 bit, 1 = slow, 255 = fast
+  
+  switch (step) {
+
+    case -1:                                                  // Initialize ripple variables.
+      colour = random8();                                     // More peaks/s = higher the hue colour.
+      step = 0;
+      break;
+
+    case 0:
+      for (int i=0; i<NUMELEMENTS(circle_1); i++) {
+        leds[circle_1[i]] = CHSV(colour, 255, 255);                     // Display the first pixel of the ripple in the center
+      }
+      step ++;
+      break;
+
+    case maxsteps:                                            // At the end of the ripples.
+      // step = -1;
+      break;
+
+    default:                                                  // Middle of the ripples.
+      //leds[(center + step + NUM_LEDS) % NUM_LEDS] += CHSV(colour, 255, myfade/step*2);       // Simple wrap.
+      //leds[(center - step + NUM_LEDS) % NUM_LEDS] += CHSV(colour, 255, myfade/step*2);
+      for (int i=0; i<circleMatrix[step].numElements; i++)
+        leds[circleMatrix[step].circles[i]] += CHSV(colour, 255, myfade/step*2);       
+        EVERY_N_MILLIS_I(sound_ripple_timer, GHUE_SPEED) {
+          sound_ripple_timer.setPeriod(GHUE_SPEED);  
+          step ++;                                            // Next step - moving the ring out concentrically one more step
+        }
+      break;  
+  } // switch step
+  
+} // sound_ripple()
+
+// ---------- END PATTERNS ------------------------------
+
+void decreaseBrightness(bool show_indicator = true) {
+  uint8_t b = FastLED.getBrightness();
+  if (show_indicator) indicator(b, 255);
+  if (b > 10)
+    FastLED.setBrightness(b - 10);
+}
+
+void increaseBrightness(bool show_indicator = true) {
+  uint8_t b = FastLED.getBrightness();
+  if (show_indicator) indicator(b, 255);
+  if (b < 245)
+    FastLED.setBrightness(b + 10);
+}
+
+void set_blending_overlay() {
+  if (gOverlayPattern == 0) {
+    gOverlayPattern = 255;      // turn off if it was on
+  } else 
+    gOverlayPattern = 0;
+}
+
+void blending_overal_off() {
+  gOverlayPattern = 255;
+}
+
+// What happens when flirted with
+void nervous(bool is_sender=false) {
 
   getSample();                                                // Sample the microphone.
   agcAvg();                                                   // Calculate the adjusted value as sampleAvg.
@@ -590,18 +926,15 @@ void nervous(bool is_sender=false) {
   FastLED.clear();
   for (int i=0; i<ARRAY_SIZE(outer_ring); i++) {
     if (is_sender) {
-      leds[outer_ring[i]] = CHSV(HUE_BLUE, 100, sampleAgc);    // TODO - validate
+      leds[outer_ring[i]] = CHSV(HUE_BLUE, 100, sampleAgc);    
     } else {
-      leds[outer_ring[i]] = CHSV(HUE_RED, 100, sampleAgc);    // TODO - validate
+      leds[outer_ring[i]] = CHSV(HUE_RED, 100, sampleAgc);    
     }
   }
 
-  // TODO -- need to figure out how to either keep calling this or ... 
-  // gCurrentPatternNumber = STATIC_PATTERN; 
-
   if (!is_sender)  { // no forget the baby and make it sound activated
     for (int i=0; i<ARRAY_SIZE(little_heart); i++) {
-      leds[little_heart[i]] = CHSV(HUE_RED, 200, sampleAgc);    // TODO - validate
+      leds[little_heart[i]] = CHSV(HUE_RED, 200, sampleAgc);    
     }
   }
 
@@ -636,44 +969,72 @@ void setup_leds() {
 struct SimplePatternList {
   SimplePattern functPtr;
   const char * const name;
+  const bool is_sound;
 };
 
 SimplePatternList gPatterns[] = { 
-                                {outside_sound, "Outside Sound"},
-                                {flyingcircular, "Flying Circular"},
-                                {sound_sample, "Sound Sample"},
-                                {nervous, "Nervous"},
-                                {sound_wave_color, "Sound Wave Based on Color"},
-                                {flyingcircular, "Flying Circular"},
-                                {bpm_rings, "BMP with Rings"},
-                                {fire, "Fire"},
-                                {sindots, "Sin Dot"},
-                                {sound_wave, "Sound Wave"},
-                                {sound_show, "Sound Show"},
-                                {outside, "Outside Only"},
-                                {runningOutside, "Running Dot Outside"},
-                                {rainbowCircles, "Rainbow Circles"},
-                                {confetti, "Confetti"},
-                                {pride, "Pride"},
-                                {solid, "Solid"},
-                                {rainbowLines, "Rainbow Lines"},
-                                {rainbow, "Rainbow"},
-                                {sinelon, "Sinelon"},
-                                {juggle, "Juggle"},
-                                {bpm, "BPM"},
-                                {draw_little_heart, "Little Heart"},
-                                {sinusoid, "SinusOID"},
+                                {sound_ripple, "Sound Ripple", 1},      // tune the peak detection a bit but otherwise okay
+                                {kriegsman_swirl, "Krigesman Swirl", 0},  // super cool 
+                                {outside_sound, "Outside Sound", 1},      // works
+                                {flyingcircular, "Flying Circular", 0},   // works
+                                {sound_sample, "Sound Sample", 1},        // works
+                                {sound_wave_color, "Sound Wave Based on Color", 1},     // works
+                                // {spendida_crossfader, "Splendida Crossfader", 0}, // TODO - needs lots of help
+                                // {vu_meter, "VU Meter", 1},    // TODO - somehow overwrites other memory and sets no_update to 29
+                                {fire, "Fire", 0},                // works
+                                {sindots, "Sin Dot", 0},
+                                {matrix, "Matrix", 0},              // works
+                                {sound_show, "Sound Show", 1},
+                                {sound_wave, "Sound Wave", 1},
+                                {bpm_rings, "BMP with Rings", 0},   // works
+                                {outside, "Outside Only", 0},
+                                {sinelon, "Sinelon", 0},
+                                {runningOutside, "Running Dot Outside", 0},
+                                {rainbowCircles, "Rainbow Circles", 0},
+                                {confetti, "Confetti", 0},
+                                {pride, "Pride", 0},
+                                {rainbowLines, "Rainbow Lines", 0},
+                                {juggle, "Juggle", 0},
+                                {bpm, "BPM", 0},
+                                {rainbow, "Rainbow", 0},
+                                {sound_equalizer, "Equalizer", 1},      // still needs some work
+                                {draw_little_heart, "Little Heart", 0},
+                                {sinusoid, "SinusOID", 0},
+                                // {nervous, "Nervous", 1},
                                 };
 
 SimplePatternList gOverlay[] = { 
                                 {blending_overlay, "Blending for sound_show"}
                                };
 
+bool is_sound_show(uint16_t show_index) {
+  return gPatterns[show_index].is_sound;
+}
+
+void indicate_show(uint16_t show_index) {
+  timer.cancel();
+  timer.in(400, reset_no_update);          // milliseconds - show just briefly
+  no_updates = true;
+
+  // outside steps
+  FastLED.clear();
+  for (int i=0; i<show_index; i++) {
+    CRGB c;
+    if (is_sound_show(i)) c = CRGB::Blue;
+    else c = CRGB::Green;
+    leds[outer_ring[i]] = c; 
+  }
+  FastLED.show();
+}                      
+
 void nextPattern()
 {
   // add one to the current pattern number, and wrap around at the end
   gCurrentPatternNumber = (gCurrentPatternNumber + 1) % ARRAY_SIZE( gPatterns);
   Serial.println(gPatterns[gCurrentPatternNumber].name);
+  static_pattern = false;
+
+  indicate_show(gCurrentPatternNumber);
 }
 
 void previousPattern()
@@ -682,16 +1043,19 @@ void previousPattern()
   if (gCurrentPatternNumber > 0) gCurrentPatternNumber = (gCurrentPatternNumber - 1); 
   else gCurrentPatternNumber = ARRAY_SIZE(gPatterns) - 1;
   Serial.println(gPatterns[gCurrentPatternNumber].name);
+  static_pattern = false;
+
+  indicate_show(gCurrentPatternNumber);
 }
 
 void updatePattern() {
   if (!no_updates) {
-    if (gCurrentPatternNumber != STATIC_PATTERN) {
+    if (!static_pattern) {
       gPatterns[gCurrentPatternNumber].functPtr();   // call the helper script
       // FastLED.setBrightness(BRIGHTNESS);
       FastLED.show();
 
-      EVERY_N_MILLIS_I( thistimer, 50 ) { // initial period = 50ms
+      EVERY_N_MILLIS_I( thistimer, 50 ) { // initial period = 50ms can be changed via IR remote
         thistimer.setPeriod(GHUE_SPEED);
         gHue = (gHue+1) % 255; 
       }
