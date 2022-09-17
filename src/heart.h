@@ -12,6 +12,7 @@
 #define BRIGHTNESS          (100)
 #define MAX_POWER_MILLIAMPS (700)
 #define STARTING_BRIGHTNESS (150)
+#define ERROR_LED           (NUMPIXELS + 1)
 
 #define IR_RECEIVE_PIN      (17)
 #define IR_SEND_PIN         (4)
@@ -75,17 +76,17 @@ static const unsigned char circles[] = { 6, 5, 5, 6, 6, 5, 4, 3, 3, 4, 5, 6, 6, 
 
 #define WIDTH  (11)
 #define HEIGHT (8)
-static const uint16_t xy[HEIGHT][WIDTH] = {                  { 100, 100, 1, 2, 100, 100, 100, 3, 4, 100, 100 },
-                                                             { 100, 5, 6, 7, 8, 100, 9, 10, 11, 12, 100 },
-                                                             { 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23 },
-                                                             { 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 100 },
-                                                             { 100, 34, 35, 36, 37, 38, 39, 40, 41, 100, 100 },
-                                                             { 100, 100, 42, 43, 44, 45, 46, 47, 100, 100, 100 },
-                                                             { 100, 100, 100, 48, 49, 50, 51, 100, 100, 100, 100 }, 
-                                                             { 100, 100, 100, 100, 52, 100, 100, 100, 100, 100, 100 } 
+static const uint8_t xy[HEIGHT][WIDTH] = {                  { ERROR_LED, ERROR_LED, 1, 2, ERROR_LED, ERROR_LED, ERROR_LED, 3, 4, ERROR_LED, ERROR_LED },
+                                                            { ERROR_LED, 5, 6, 7, 8, ERROR_LED, 9, 10, 11, 12, ERROR_LED },
+                                                            { 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23 },
+                                                            { 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, ERROR_LED },
+                                                            { ERROR_LED, 34, 35, 36, 37, 38, 39, 40, 41, ERROR_LED, ERROR_LED },
+                                                            { ERROR_LED, ERROR_LED, 42, 43, 44, 45, 46, 47, ERROR_LED, ERROR_LED, ERROR_LED },
+                                                            { ERROR_LED, ERROR_LED, ERROR_LED, 48, 49, 50, 51, ERROR_LED, ERROR_LED, ERROR_LED, ERROR_LED }, 
+                                                            { ERROR_LED, ERROR_LED, ERROR_LED, ERROR_LED, 52, ERROR_LED, ERROR_LED, ERROR_LED, ERROR_LED, ERROR_LED, ERROR_LED } 
                                         };
 
-uint16_t XY( uint8_t x, uint8_t y);
+uint8_t XY( uint8_t x, uint8_t y);
 void setup_heart();
 bool is_server();
 
@@ -104,3 +105,4 @@ extern uint32_t Speed_Dec;
 extern uint32_t Speed_Inc;
 extern uint32_t Runtime_Dec;
 extern uint32_t Runtime_Inc;
+extern uint32_t WiFi_On;
