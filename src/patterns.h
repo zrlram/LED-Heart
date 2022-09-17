@@ -15,16 +15,16 @@
 
 #define ARRAY_SIZE(A) (sizeof(A) / sizeof((A)[0]))
 
-static bool static_pattern = false;      // if we don't want to have the pattern updated 
 static uint16_t GHUE_SPEED = 50;       // ms to increase gHue   0 - 1000 in 50 steps
 
 static uint8_t gHue = 0;
 CRGB color = CRGB::Red; 
 
 auto timer = timer_create_default();
-bool no_updates = false;          // When we do not want to call update_pattern
+static bool no_updates = false;          // When we do not want to call update_pattern
+static bool show_initialized = false;     // some shows need to init themselves when they run again (like filling all LEDs with a color)
 
-CRGB leds[NUMPIXELS];
+CRGB leds[NUMPIXELS+1];                 // we are using the overflow pixel for error handling (see XY(i,j))
 
 // List of patterns to cycle through.  Each is defined as a separate function below.
 typedef void (*SimplePattern)();
@@ -40,31 +40,31 @@ TBlendType    currentBlending = LINEARBLEND;                  // NOBLEND or LINE
 
 bool reset_no_update(void *) {
   no_updates = false;
-  return false; // repeat?
+  return false; // no repeat of this timer
 }
 
 void indicator(uint16_t value, uint16_t maximum, CRGB c = CRGB::Blue) {
   timer.cancel();
-  timer.in(1000, reset_no_update); 
+  timer.in(600, reset_no_update); 
   no_updates = true;
 
   // 10 steps
   FastLED.clear();
-  for (int i=0; i<10.0/maximum*value; i++) {
+  for (uint16_t i=0; i<10.0/maximum*value; i++) {
     leds[i+23] = c;
   }
   FastLED.show();
 }
 
 void increase_ghue_speed(bool show_indicator = true) {
-  if (GHUE_SPEED < 950)
+  if (GHUE_SPEED <= 950)
     GHUE_SPEED += 50;
   if (show_indicator) 
     indicator(GHUE_SPEED, 1000, CRGB::Pink);
 }
 
 void decrease_ghue_speed(bool show_indicator = true) {
-  if (GHUE_SPEED > 50)
+  if (GHUE_SPEED >= 50)
     GHUE_SPEED -= 50;
   if (show_indicator) 
     indicator(GHUE_SPEED, 1000, CRGB::Pink);
@@ -85,7 +85,7 @@ void solid() {
       leds[i] = color;
     }
     FastLED.show();
-    static_pattern = true;
+    no_updates = true;
 }
 
 void white() {
@@ -257,6 +257,7 @@ void sndwave() {
 
   // try to do it by rings ...  
 
+  // TODO -- do we just only call this when there is a certain threshold??
   for (int i=0; i<circleMatrix[0].numElements; i++) {
     // init the innter circle
     leds[circleMatrix[0].circles[i]] = ColorFromPalette(currentPalette, sampleAgc, sampleAgc, currentBlending); // Put the sample into the center
@@ -318,33 +319,37 @@ void sound_wave() {
     sndwave();
   }
 
-  FastLED.show();
+  // FastLED.show();
 
 } 
 
 /* https://wokwi.com/projects/288948170884383245 */
 void matrix() {
   static byte rain[NUMPIXELS];
-  static byte init = false;
 
-  if (!init) {
+  if (!show_initialized) {
     // init - run once
     for (int i = 0; i < NUMPIXELS; i++) rain[i] = !random8(15)? 1:0; 
-    init = true;
+    show_initialized = true;
   }
 
   EVERY_N_MILLISECONDS(80) {
-    static int speed = 1;
+    static int speed = 10;
 
-    for (byte j = 0; j < HEIGHT; j++) {
-      int yindex=(j + speed) % HEIGHT*WIDTH;
-      for (byte i = 0; i < WIDTH; i++) {
-        byte layer = rain[yindex+i];   
-        if (layer) leds[XY((WIDTH - 1) - i, (HEIGHT - 1) - j)].setHue (100);
+    for (byte j = 0; j < HEIGHT; j++) {       // 0..7
+      int yindex = (j + speed) % WIDTH * HEIGHT;
+      for (byte i = 0; i < WIDTH; i++) {      // 0..10
+        if (rain[(yindex+i) % NUMPIXELS]) {
+          // Serial.printf("%d, %d, %d\n", i, j, XY(i, j));
+          //Serial.printf("%d, %d, %d\n", i, j, led);
+          //Serial.println();
+          // error handling is happening by returning ERROR_LED from XY and that's mapped in LED as an extra LED
+          leds[XY((WIDTH - 1) - i, (HEIGHT - 1) - j)].setHue (100);
+        }
       }
     }
 
-    fadeToBlackBy(leds, 256, 30);
+    fadeToBlackBy(leds, NUMPIXELS, 30);
     speed ++;
   }
 
@@ -354,7 +359,7 @@ void matrix() {
     if (rain[rand1] && !rain[rand2]) {rain[rand1] = 0; rain[rand2] = 1;}
   }
 
-  FastLED.show();
+  // FastLED.show();
 
 } 
 
@@ -392,7 +397,7 @@ void kriegsman_swirl()
   leds[XY( i, nj)] += CHSV( ms / 37, 255, 255);
   leds[XY(ni, j)] += CHSV( ms / 41, 255, 255);
 
-  FastLED.show();
+  // FastLED.show();
 }
 
 // COOLING: How much does the air cool as it rises?
@@ -449,14 +454,14 @@ void blending_overlay() {
     // static uint8_t baseC = random8();                                                       // You can use this as a baseline colour if you want similar hues in the next line.
     targetPalette = CRGBPalette16(CHSV(random8(), 255, random8(128, 255)), CHSV(random8(), 255, random8(128, 255)), CHSV(random8(), 192, random8(128, 255)), CHSV(random8(), 255, random8(128, 255)));
   }
-  FastLED.show();
+  // FastLED.show();
 
 }
 
 void runningOutside() {
     FastLED.clear();
     leds[outer_ring_chaser[gHue % ARRAY_SIZE(outer_ring_chaser)]] = CRGB::White;
-    FastLED.show();
+    // FastLED.show();
 }
 
 void outside_sound() {
@@ -473,7 +478,7 @@ void outside_sound() {
       c.v = sampleAgc;
       leds[outer_ring[i]] = c;
     }
-    FastLED.show();
+    // FastLED.show();
   }
 }
 
@@ -482,7 +487,7 @@ void outside() {
     for (int i=0; i<ARRAY_SIZE(outer_ring); i++) {
       leds[outer_ring[i]] = color;
     }
-    FastLED.show();
+    // FastLED.show();
 }
 
 void outside(CRGB color) {
@@ -513,10 +518,10 @@ void sound_sample()  {
   getSample();                                                // Sample the microphone.
   agcAvg();                                                   // Calculate the adjusted value as sampleAvg.
   
-  if (samplePeak == 1) { leds[0] = CRGB::Gray; samplePeak = 0;}
+  // if (samplePeak == 1) { leds[0] = CRGB::Gray; samplePeak = 0;}
   leds[(millis() % (NUMPIXELS-1)) +1] = ColorFromPalette(currentPalette, sampleAgc, sampleAgc, currentBlending);
  
-  FastLED.show();
+  // FastLED.show();
 
 }
 
@@ -578,7 +583,7 @@ void flyingcircular() {
 
   blur2d (leds, WIDTH, HEIGHT, 64 );
   
-  FastLED.show();
+  // FastLED.show();
 
 } 
 
@@ -625,7 +630,7 @@ void sinusoid() {
         }
   }
 
-  FastLED.show();
+  // FastLED.show();
   
 }
 
@@ -938,7 +943,7 @@ void nervous(bool is_sender=false) {
     }
   }
 
-  FastLED.show();
+  // FastLED.show();
 
 }
 
@@ -950,7 +955,7 @@ void sound_show() {
   blending_overlay();
   getSample();                                                // Sample the microphone.
   agcAvg();                                                   // Calculate the adjusted value as sampleAvg.
-  if (samplePeak == 1) { leds[0] = CRGB::Gray; samplePeak = 0;}
+  // if (samplePeak == 1) { leds[0] = CRGB::Gray; samplePeak = 0;}
   leds[(millis() % (NUMPIXELS-1)) +1] = ColorFromPalette(currentPalette, sampleAgc, sampleAgc, currentBlending);
 } 
 
@@ -973,7 +978,7 @@ struct SimplePatternList {
 };
 
 SimplePatternList gPatterns[] = { 
-                                {sound_ripple, "Sound Ripple", 1},      // tune the peak detection a bit but otherwise okay
+                                {sound_ripple, "Sound Ripple", 1},      // TODO: tune the peak detection a bit but otherwise okay (it's okay to be empty too, don't overdo it)
                                 {kriegsman_swirl, "Krigesman Swirl", 0},  // super cool 
                                 {outside_sound, "Outside Sound", 1},      // works
                                 {flyingcircular, "Flying Circular", 0},   // works
@@ -981,9 +986,9 @@ SimplePatternList gPatterns[] = {
                                 {sound_wave_color, "Sound Wave Based on Color", 1},     // works
                                 // {spendida_crossfader, "Splendida Crossfader", 0}, // TODO - needs lots of help
                                 // {vu_meter, "VU Meter", 1},    // TODO - somehow overwrites other memory and sets no_update to 29
+                                {matrix, "Matrix", 0},              // works
                                 {fire, "Fire", 0},                // works
                                 {sindots, "Sin Dot", 0},
-                                {matrix, "Matrix", 0},              // works
                                 {sound_show, "Sound Show", 1},
                                 {sound_wave, "Sound Wave", 1},
                                 {bpm_rings, "BMP with Rings", 0},   // works
@@ -1011,54 +1016,51 @@ bool is_sound_show(uint16_t show_index) {
   return gPatterns[show_index].is_sound;
 }
 
-void indicate_show(uint16_t show_index) {
+void indicate_show(uint8_t show_index) {
   timer.cancel();
   timer.in(400, reset_no_update);          // milliseconds - show just briefly
   no_updates = true;
 
   // outside steps
   FastLED.clear();
-  for (int i=0; i<show_index; i++) {
-    CRGB c;
+  for (uint8_t i=0; i<=show_index; i++) {
+    CRGB c = CRGB::Green;
     if (is_sound_show(i)) c = CRGB::Blue;
-    else c = CRGB::Green;
     leds[outer_ring[i]] = c; 
   }
   FastLED.show();
 }                      
 
-void nextPattern()
-{
+void nextPattern() {
   // add one to the current pattern number, and wrap around at the end
   gCurrentPatternNumber = (gCurrentPatternNumber + 1) % ARRAY_SIZE( gPatterns);
   Serial.println(gPatterns[gCurrentPatternNumber].name);
-  static_pattern = false;
+  no_updates = false;
+  show_initialized = false;     // we go to a new show and need to make sure the new show gets initialized again
 
   indicate_show(gCurrentPatternNumber);
 }
 
-void previousPattern()
-{
+void previousPattern() {
   // add one to the current pattern number, and wrap around at the end
   if (gCurrentPatternNumber > 0) gCurrentPatternNumber = (gCurrentPatternNumber - 1); 
   else gCurrentPatternNumber = ARRAY_SIZE(gPatterns) - 1;
   Serial.println(gPatterns[gCurrentPatternNumber].name);
-  static_pattern = false;
+  no_updates = false;
+  show_initialized = false;     // we go to a new show and need to make sure the new show gets initialized again
 
   indicate_show(gCurrentPatternNumber);
 }
 
 void updatePattern() {
   if (!no_updates) {
-    if (!static_pattern) {
-      gPatterns[gCurrentPatternNumber].functPtr();   // call the helper script
-      // FastLED.setBrightness(BRIGHTNESS);
-      FastLED.show();
+    gPatterns[gCurrentPatternNumber].functPtr();   // call the helper script
+    // FastLED.setBrightness(BRIGHTNESS);
+    FastLED.show();
 
-      EVERY_N_MILLIS_I( thistimer, 50 ) { // initial period = 50ms can be changed via IR remote
-        thistimer.setPeriod(GHUE_SPEED);
-        gHue = (gHue+1) % 255; 
-      }
+    EVERY_N_MILLIS_I( thistimer, 50 ) { // initial period = 50ms can be changed via IR remote
+      thistimer.setPeriod(GHUE_SPEED);
+      gHue = (gHue+1) % 255; 
     }
     if (gOverlayPattern != 255) {
       gOverlay[gOverlayPattern].functPtr();   // call the helper script

@@ -1,15 +1,14 @@
 #include <heart.h>
 #include <ir.h>
 
-uint16_t XY( uint8_t x, uint8_t y)
+uint8_t XY( uint8_t x, uint8_t y)
+// returns ERROR_LED for non existing LED
 {
-  uint16_t i;
-  if (x > WIDTH) x = WIDTH;
-  if (y > HEIGHT) y = HEIGHT;
+  if (x >= WIDTH) x = WIDTH-1;
+  if (y >= HEIGHT) y = HEIGHT-1;
 
-  i = xy[y][x] - 1;
-
-  return i;
+  return xy[y][x] - 1;
+  
 }
 
 boolean is_serv = false;
@@ -27,6 +26,7 @@ uint32_t Speed_Dec;
 uint32_t Speed_Inc;
 uint32_t Runtime_Dec;
 uint32_t Runtime_Inc;
+uint32_t WiFi_On;
 
 boolean is_server() {
   return is_serv;
@@ -63,6 +63,7 @@ void setup_heart() {
       Speed_Inc = Button_LightGreen;
       Runtime_Dec = Button_LightRed;
       Runtime_Inc = Button_LightLightBlue;
+      WiFi_On = Button_On;
 
     } else {
       // setup the narrow IR
@@ -80,6 +81,7 @@ void setup_heart() {
       Speed_Inc = Button_CH_Plus;
       Runtime_Dec = Button_1;
       Runtime_Inc = Button_2;
+      WiFi_On = Button_3;
 
    }
 

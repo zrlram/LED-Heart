@@ -4,8 +4,26 @@
 #include <patterns.h>
 #include <ir.h>
 #include <ble_distance.h>
+#include <wifi_ota.h>
 // #include <mesh_wifi.h>
 // #include <input.h>
+
+/* TODO - Next steps
+    - Button to enable / disable WiFi
+    - Build out OTA
+    - SHows
+      - Pong
+      - Magic eightball
+      - Fireworks
+      - 
+    - Giro - move a ball around
+    - Use phone as a display for variables / functions / etc
+    - Fix indicator for pattern selector  (show them all initially and highlight in red / purple where we are)
+    - GPS
+      - Show what direction the other heart is in when holiding it flat?
+    - LoRa for comms?
+      - Build a LoRa mesh and show where the heart is?
+*/
 
 #ifdef __AVR__
   #include <avr/power.h>
@@ -19,14 +37,9 @@ uint8_t pattern_runtime = DEfAULT_PATTERN_RUNTIME;        // seconds
 
 void setup() {
   
-  #if defined(__AVR_ATtiny85__) && (F_CPU == 16000000)
-    clock_prescale_set(clock_div_1);
-  #endif
-
   Serial.begin(9600);
 
   setup_heart();
-
   setup_leds();
   setup_ir();
   setup_ble();
@@ -116,6 +129,9 @@ void loop() {
         increase_pattern_runtime();
         Serial.print(F("Increase Pattern Runtime: ")); 
         Serial.println(pattern_runtime);
+  } else if (ir == WiFi_On) {
+        wifi_toggle();      // if on, turn off, if off, turn on
+        Serial.print(F("Wifi On/Off")); 
   }
 
   timer.tick();   // pattern_timer
@@ -131,20 +147,5 @@ void loop() {
   } else {
     updatePattern();
   }
-
-  // for input button
-  //void touchAttachInterrupt(uint8_t pin, void (*userFunc)(void), uint16_t threshold);
-
-  /* Update Display 
-  EVERY_N_MILLISECONDS(200) {
-    char buf[5];
-    snprintf (buf, 5, "%2d", gCurrentPatternNumber);
-    u8x8.drawString(8, 2, buf);
-    snprintf (buf, 5, "%4d", gHue);
-    u8x8.drawString(5, 3, buf);
-    //snprintf (buf, 5, "%4d", read_touch());
-    //u8x8.drawString(5, 4, buf);
-  }
-  */
 
 }

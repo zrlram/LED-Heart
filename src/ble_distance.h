@@ -60,6 +60,7 @@ void just_disconnected() {
 /* https://github.com/espressif/arduino-esp32/blob/master/libraries/BLE/examples/BLE_client/BLE_client.ino */
 class MyClientCallback : public BLEClientCallbacks {
   void onConnect(BLEClient* pclient) {
+    connected = true;
   }
 
   void onDisconnect(BLEClient* pclient) {
@@ -187,14 +188,14 @@ void ble_scan() {
 
 }
 
+// main calls this when we want to stop being nervous, we select random() or a show. 
+// this is set util BLE disconnects - on server or client
 void set_overwrite_nervous() {
   overwrite_nervous = true;
   //just_disconnected();                            // just reset all these variables in two minutes as well
-
 }
 
-
-/* return: true if connected and wasn't overwritten by IR
+/* return: true if connected and wasn't overwritten by IR and we didn't _just_ disconnect within 2 minutes
            false if not connected or in overwrite mode       */
 bool ble_loop() {
 
@@ -209,8 +210,6 @@ bool ble_loop() {
   Serial.print(" ");
   Serial.println(device_found);
   */
-
-
 
   // there is a two minute grace period when we disconnect before we get nervous again
   if (_just_disconnected) {
@@ -246,6 +245,7 @@ bool ble_loop() {
     return connected;
   } 
 
+  // we are connected, but we are in overwrite_nervous
   return false;
 
 }
