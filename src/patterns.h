@@ -37,6 +37,15 @@ CRGBPalette16 currentPalette = PartyColors_p;
 // CRGBPalette16 currentPalette = OceanColors_p;
 CRGBPalette16 targetPalette = OceanColors_p;
 TBlendType    currentBlending = LINEARBLEND;                  // NOBLEND or LINEARBLEND
+CHSV distinct_colors[] = {
+  CHSV(0, 255, 255), // Red
+  CHSV(120, 255, 255), // Green
+  CHSV(240, 255, 255), // Blue
+  CHSV(30, 255, 255), // Purple
+  CHSV(60, 255, 255), // Orange
+  CHSV(90, 255, 255), // Yellow
+};
+
 
 bool reset_no_update(void *) {
   no_updates = false;
@@ -849,6 +858,15 @@ void sound_equalizer() {
    }
 }
 
+// to validate the circleMatrix and its data definition - also useful to test all LEDs
+void test_circle() {
+
+  for (int step=0; step<NUMELEMENTS(circleMatrix); step++) 
+    for (int i=0; i<circleMatrix[step].numElements; i++)
+      leds[circleMatrix[step].circles[i]] = distinct_colors[step];
+
+}
+
 // https://github.com/atuline/FastLED-SoundReactive/blob/master/sound_ripple/sound_ripple.ino
 int step = -1;                                                // -1 is the initializing step.
 uint8_t colour;                                               // Ripple colour is randomized.
@@ -978,6 +996,7 @@ struct SimplePatternList {
 };
 
 SimplePatternList gPatterns[] = { 
+                                {test_circle, "Test Circle Def", 0},      // TODO: tune the peak detection a bit but otherwise okay (it's okay to be empty too, don't overdo it)
                                 {sound_ripple, "Sound Ripple", 1},      // TODO: tune the peak detection a bit but otherwise okay (it's okay to be empty too, don't overdo it)
                                 {kriegsman_swirl, "Krigesman Swirl", 0},  // super cool 
                                 {outside_sound, "Outside Sound", 1},      // works

@@ -8,7 +8,7 @@
 #define MIC_PIN             (32)                  // Analog port for microphone
 #define ROLE_PIN            (15)                  // for BLE flirting
 
-#define NUMPIXELS           (52)
+#define NUMPIXELS           (54)
 #define BRIGHTNESS          (100)
 #define MAX_POWER_MILLIAMPS (700)
 #define STARTING_BRIGHTNESS (150)
@@ -18,8 +18,8 @@
 #define IR_SEND_PIN         (4)
 #define IR_ROLE_PIN         (16)
 
-static const unsigned char outer_ring_chaser[] = {0, 1, 7, 17, 8, 2, 3, 11, 
-                                                  22, 32, 40, 46, 50, 51, 47, 41, 33, 23, 12, 4};
+static const unsigned char outer_ring_chaser[] = {1, 0, 5, 17, 11, 6, 7, 8, 
+                                                  22, 32, 40, 46, 50, 52, 54, 51, 47, 41, 33, 23, 12, 2};
 
 static const unsigned char outer_ring[] = {
                                        /* 0, 1, 2, 3,
@@ -31,11 +31,11 @@ static const unsigned char outer_ring[] = {
                                           47, 50,
                                           51 };   */
 
-                                          51, 47, 41, 33, 23, 12, 4, 0, 1, 7, 17, 8, 2,
-                                          3, 11, 22, 32, 40, 46, 50 };
+                                          53, 51, 47, 41, 33, 23, 12, 2, 1, 0, 5, 17, 11, 6, 7, 8,
+                                          22, 32, 40, 46, 50, 52 };
 
 static const unsigned char little_heart[] = { 36, 37, 26, 27, 28, 29, 16, 18 };
-static const unsigned char ROWS[] = {4, 8, 11, 10, 8, 6, 4, 1};
+static const unsigned char ROWS[] = {4, 8, 11, 10, 8, 6, 4, 2, 1};
 static const unsigned char row[] = {
                                  0,0,0,0,
                                  1,1,1,1,1,1,1,1,
@@ -44,17 +44,19 @@ static const unsigned char row[] = {
                                  4,4,4,4,4,4,4,4,
                                  5,5,5,5,5,5,
                                  6,6,6,6,
-                                 7
+                                 7,7,
+                                 8
                                  };
 
 #define NUMELEMENTS(x) (sizeof(x) / sizeof(x[0]))
 
+// these guys start from 0, not 1!
 static const unsigned char circle_1[] = { 27, 28 }; 
 static const unsigned char circle_2[] = { 16, 17, 18, 26, 29, 36, 37 };
-static const unsigned char circle_3[] = { 7, 8, 15, 19, 25, 30, 35, 38, 43, 44 };
-static const unsigned char circle_4[] = { 6, 9, 14, 20, 24, 31, 34, 39, 42, 45, 48, 49 };
-static const unsigned char circle_5[] = { 1, 2, 5, 10, 13, 21, 23, 32, 33, 40, 41, 46, 47, 50, 51};
-static const unsigned char circle_6[] = { 0, 3, 4, 11, 12, 22};
+static const unsigned char circle_3[] = { 11, 5, 15, 19, 25, 30, 35, 38, 43, 44 };
+static const unsigned char circle_4[] = { 10, 6, 4, 14, 20, 24, 31, 34, 39, 42, 45, 48, 49 };
+static const unsigned char circle_5[] = { 6, 0, 3, 9, 13, 21, 23, 32, 33, 40, 41, 46, 47, 50, 51, 52};
+static const unsigned char circle_6[] = { 7, 8, 1, 2, 12, 22, 53};
 struct CIRCLES {
   const unsigned char* circles;
   uint16_t numElements;
@@ -68,22 +70,26 @@ CIRCLES const circleMatrix[] = {
   {circle_6, NUMELEMENTS(circle_6)},
 };
 
+// TBD
 static const unsigned char circles[] = { 6, 5, 5, 6, 6, 5, 4, 3, 3, 4, 5, 6, 6, 5, 4, 3, 2, 2, 2, 3, 4, 
                                           5, 6, 5, 4, 3, 2, 1, 1, 2, 3, 
                                           4, 5, 5, 4, 3, 2, 2, 3, 4, 5,
-                                          5, 4, 3, 3, 4, 5, 5, 4, 4, 5, 5 
+                                          5, 4, 3, 3, 4, 5, 5, 4, 4, 5, 5 ,
+                                          0
                                         };
 
 #define WIDTH  (11)
-#define HEIGHT (8)
-static const uint8_t xy[HEIGHT][WIDTH] = {                  { ERROR_LED, ERROR_LED, 1, 2, ERROR_LED, ERROR_LED, ERROR_LED, 3, 4, ERROR_LED, ERROR_LED },
-                                                            { ERROR_LED, 5, 6, 7, 8, ERROR_LED, 9, 10, 11, 12, ERROR_LED },
-                                                            { 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 23 },
-                                                            { 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, ERROR_LED },
-                                                            { ERROR_LED, 34, 35, 36, 37, 38, 39, 40, 41, ERROR_LED, ERROR_LED },
-                                                            { ERROR_LED, ERROR_LED, 42, 43, 44, 45, 46, 47, ERROR_LED, ERROR_LED, ERROR_LED },
-                                                            { ERROR_LED, ERROR_LED, ERROR_LED, 48, 49, 50, 51, ERROR_LED, ERROR_LED, ERROR_LED, ERROR_LED }, 
-                                                            { ERROR_LED, ERROR_LED, ERROR_LED, ERROR_LED, 52, ERROR_LED, ERROR_LED, ERROR_LED, ERROR_LED, ERROR_LED, ERROR_LED } 
+#define HEIGHT (9)
+// the main grid and direction of how the heart is wired - these guys start from 1, not 0
+static const uint8_t xy[HEIGHT][WIDTH] = {                  { ERROR_LED, ERROR_LED, 8, 7, ERROR_LED, ERROR_LED, ERROR_LED, 1, 2, ERROR_LED, ERROR_LED },
+                                                            { ERROR_LED, 9, 10, 11, 12, ERROR_LED, 6, 5, 4, 3, ERROR_LED },
+                                                            { 23, 22, 21, 20, 19, 18, 17, 16, 15, 14, 13 },
+                                                            { 33, 32, 31, 30, 29, 28, 27, 26, 25, 24, ERROR_LED },
+                                                            { ERROR_LED, 41, 40, 39, 38, 37, 36, 35, 34, ERROR_LED, ERROR_LED },
+                                                            { ERROR_LED, ERROR_LED, 47, 46, 45, 44, 43, 42, ERROR_LED, ERROR_LED, ERROR_LED },
+                                                            { ERROR_LED, ERROR_LED, ERROR_LED, 51, 50, 49, 48, ERROR_LED, ERROR_LED, ERROR_LED, ERROR_LED }, 
+                                                            { ERROR_LED, ERROR_LED, ERROR_LED, ERROR_LED, 53, 52, ERROR_LED, ERROR_LED, ERROR_LED, ERROR_LED, ERROR_LED }, 
+                                                            { ERROR_LED, ERROR_LED, ERROR_LED, ERROR_LED, 54, ERROR_LED, ERROR_LED, ERROR_LED, ERROR_LED, ERROR_LED, ERROR_LED } 
                                         };
 
 uint8_t XY( uint8_t x, uint8_t y);
