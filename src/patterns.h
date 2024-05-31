@@ -337,6 +337,7 @@ void matrix() {
   static byte rain[NUMPIXELS];
 
   if (!show_initialized) {
+    FastLED.clear();
     // init - run once
     for (int i = 0; i < NUMPIXELS; i++) rain[i] = !random8(15)? 1:0; 
     show_initialized = true;
@@ -820,7 +821,6 @@ void sound_equalizer() {
    unsigned static int signalMax = 0;
    unsigned static int signalMin = 20;
 
-
    // map 1v p-p level to the max scale of the display
    EVERY_N_MILLIS(100) {
     getSample();
@@ -859,12 +859,23 @@ void sound_equalizer() {
 }
 
 // to validate the circleMatrix and its data definition - also useful to test all LEDs
+static boolean mode = false;
 void test_circle() {
 
-  for (int step=0; step<NUMELEMENTS(circleMatrix); step++) 
-    for (int i=0; i<circleMatrix[step].numElements; i++)
-      leds[circleMatrix[step].circles[i]] = distinct_colors[step];
-
+  // need to validate the matrix up and down. If an element is double initialized, that could show
+  if ( mode) {
+    for (int step=0; step<NUMELEMENTS(circleMatrix); step++) 
+      for (int i=0; i<circleMatrix[step].numElements; i++)
+        leds[circleMatrix[step].circles[i]] = distinct_colors[step];
+  }
+  if ( !mode) {
+    for (int step=NUMELEMENTS(circleMatrix)-1; step==0; step--) 
+      for (int i=0; i<circleMatrix[step].numElements; i++)
+        leds[circleMatrix[step].circles[i]] = distinct_colors[step];
+  }
+  EVERY_N_SECONDS(5) {                                     // Change the palette every 5 seconds.
+    mode = !mode;
+  }
 }
 
 // https://github.com/atuline/FastLED-SoundReactive/blob/master/sound_ripple/sound_ripple.ino

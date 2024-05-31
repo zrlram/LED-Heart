@@ -54,7 +54,7 @@ static const unsigned char row[] = {
 static const unsigned char circle_1[] = { 27, 28 }; 
 static const unsigned char circle_2[] = { 16, 17, 18, 26, 29, 36, 37 };
 static const unsigned char circle_3[] = { 11, 5, 15, 19, 25, 30, 35, 38, 43, 44 };
-static const unsigned char circle_4[] = { 10, 6, 4, 14, 20, 24, 31, 34, 39, 42, 45, 48, 49 };
+static const unsigned char circle_4[] = { 10, 4, 14, 20, 24, 31, 34, 39, 42, 45, 48, 49 };
 static const unsigned char circle_5[] = { 6, 0, 3, 9, 13, 21, 23, 32, 33, 40, 41, 46, 47, 50, 51, 52};
 static const unsigned char circle_6[] = { 7, 8, 1, 2, 12, 22, 53};
 struct CIRCLES {
