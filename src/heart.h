@@ -1,8 +1,11 @@
 #pragma once
 #include <Arduino.h>
 
-#define DEBUG               (false)
-#define DEBUG_IR            (false)
+#define DEBUG               0
+#define DEBUG_IR            1
+
+#undef  __USE_IR                        // use either InfraRed remote or buttons to control actions
+#define __USE_BUTTON                    // to be used with #ifdef 
 
 #define LED_PIN             (12)
 #define MIC_PIN             (32)                  // Analog port for microphone
@@ -14,9 +17,18 @@
 #define STARTING_BRIGHTNESS (150)
 #define ERROR_LED           (NUMPIXELS + 1)
 
-#define IR_RECEIVE_PIN      (17)
-#define IR_SEND_PIN         (4)
-#define IR_ROLE_PIN         (16)
+#ifdef __USE_IR
+  #define IR_RECEIVE_PIN      (17)
+  #define IR_SEND_PIN         (4)
+  #define IR_ROLE_PIN         (16)
+#endif
+
+#ifdef __USE_BUTTON       
+  #define BUTTON_1_PIN        (17)
+  #define BUTTON_2_PIN        (16)
+  #define BUTTON_3_PIN        (15)
+  #define BUTTON_4_PIN        (21)
+#endif
 
 static const unsigned char outer_ring_chaser[] = {1, 0, 5, 17, 11, 6, 7, 8, 
                                                   22, 32, 40, 46, 50, 52, 54, 51, 47, 41, 33, 23, 12, 2};
@@ -71,7 +83,7 @@ CIRCLES const circleMatrix[] = {
 };
 
 // TBD
-static const unsigned char circles[] = { 6, 5, 5, 6, 6, 5, 4, 3, 3, 4, 5, 6, 6, 5, 4, 3, 2, 2, 2, 3, 4, 
+static const unsigned char circles[] = { 6, 5, 5, 6, 6, 5, 5, 4, 3, 3, 4, 5, 6, 6, 5, 4, 3, 2, 2, 2, 3, 4, 
                                           5, 6, 5, 4, 3, 2, 1, 1, 2, 3, 
                                           4, 5, 5, 4, 3, 2, 2, 3, 4, 5,
                                           5, 4, 3, 3, 4, 5, 5, 4, 4, 5, 5 ,
@@ -96,7 +108,7 @@ uint8_t XY( uint8_t x, uint8_t y);
 void setup_heart();
 bool is_server();
 
-// IR button mappings
+// button action code mappings
 extern uint32_t Next_Show;
 extern uint32_t Prev_Show;
 extern uint32_t Bright_Down;

@@ -1,4 +1,7 @@
 #include "ir.h"
+
+#ifdef __USE_IR
+
 #include <IRremote.hpp>  
 
 boolean is_ir_sender = false;
@@ -79,3 +82,5 @@ void debug_ir() {
 
 
 }
+
+#endif

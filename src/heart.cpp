@@ -1,5 +1,10 @@
 #include <heart.h>
-#include <ir.h>
+#ifdef __USE_IR
+  #include <ir.h>
+#endif
+#ifdef __USE_BUTTON
+  #include <button.h>
+#endif
 
 uint8_t XY( uint8_t x, uint8_t y)
 // returns ERROR_LED for non existing LED
@@ -47,6 +52,7 @@ void setup_heart() {
       Serial.println("I am going to find the server");
     }
 
+    #ifdef __USE_IR
     if (is_serv) {
       // setup the wide IR
       Next_Show = Button_Green;
@@ -84,5 +90,24 @@ void setup_heart() {
       WiFi_On = Button_3;
 
    }
+   #endif
+   #ifdef __USE_BUTTON
+      Next_Show = Button_Green;
+      Prev_Show = Button_Red;
+      Bright_Down = Button_BrightDown;
+      Bright_Up = Button_BrightUp; 
+      Randomize_Pattern = Button_Flash;
+      Color_White = Button_White;
+      Color_Blue = Button_Blue;
+      Color_Red = Button_Red;
+      Blending_Overlay = Button_Strobe;
+      Off = Button_Off;
+      Speed_Dec = Button_Orange;
+      Speed_Inc = Button_LightGreen;
+      Runtime_Dec = Button_LightRed;
+      Runtime_Inc = Button_LightLightBlue;
+      WiFi_On = Button_On;
+
+   #endif
 
 }

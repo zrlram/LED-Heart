@@ -2,27 +2,22 @@
 
 #include <heart.h>
 #include <patterns.h>
-#include <ir.h>
+#include <ir.h>            // will only exeucte if USE_IR is set in heart.h
+#include <button.h>         // will only exeucte if USE_BUTTON is set in heart.h
+
 #include <ble_distance.h>
-#include <wifi_ota.h>
+// #include <wifi_ota.h>            // TBD - needs to be back on later for OTA, but not for now
 // #include <mesh_wifi.h>
 // #include <input.h>
 
 /* TODO - Next steps
     - Button to enable / disable WiFi
-    - Build out OTA
-    - SHows
+    - Shows
       - Pong
       - Magic eightball
       - Fireworks
-      - 
-    - Giro - move a ball around
-    - Use phone as a display for variables / functions / etc
-    - Fix indicator for pattern selector  (show them all initially and highlight in red / purple where we are)
-    - GPS
-      - Show what direction the other heart is in when holiding it flat?
-    - LoRa for comms?
-      - Build a LoRa mesh and show where the heart is?
+    --> Use phone as a display for variables / functions / etc
+    --> Fix indicator for pattern selector  (show them all initially and highlight in red / purple where we are)
 */
 
 #ifdef __AVR__
@@ -41,7 +36,12 @@ void setup() {
 
   setup_heart();
   setup_leds();
-  setup_ir();
+  #ifdef __USE_IR
+      setup_ir();
+  #endif
+  #ifdef __USE_BUTTON
+      setup_button();
+  #endif
   setup_ble();
   setup_sound();
 
@@ -71,70 +71,86 @@ void loop() {
     }
   }
 
-  uint32_t ir = read_ir();
-  if (ir == Next_Show) {
+  uint32_t action = 0;
+  #ifdef __USE_IR
+     action = read_ir();
+  #endif
+  #ifdef __USE_BUTTON
+    button_loop();
+    if (button_pressed(0)) {
+      Serial.println("button 1 pressed");
+      action = Next_Show; // TBD
+    }
+    if (button_pressed(1)) {
+      Serial.println("button 2 pressed");
+      action = Prev_Show; // TBD
+    }
+  #endif
+
+  if (action == Next_Show) {
         Serial.println(F("Next Show"));
         // reset_bt_timeout();       // if we were nervous, we would timeout in 2 minutes, but if IR was used, reset that
         nextPattern();
         random_pattern = false;   // switch into manual mode until explicitly asked again
         set_overwrite_nervous();
-  } else if (ir == Prev_Show) {
+  } else if (action == Prev_Show) {
         Serial.println(F("Previous Show")); 
         // reset_bt_timeout();       // if we were nervous, we would timeout in 2 minutes, but if IR was used, reset that
         previousPattern();
         random_pattern = false;   // switch into manual mode until explicitly asked again
         set_overwrite_nervous();
-  } else if (ir == Bright_Down) {
+  } else if (action == Bright_Down) {
         Serial.println(F("Decrease Brightness")); 
         decreaseBrightness();
-  } else if (ir == Bright_Up) {
+  } else if (action == Bright_Up) {
         Serial.println(F("Increase Brightness")); 
         increaseBrightness();
-  } else if (ir == Randomize_Pattern) {
+  } else if (action == Randomize_Pattern) {
         Serial.println(F("Randomize Pattern")); 
         random_pattern = true;
         set_overwrite_nervous();
-  } else if (ir == Color_White) {
+  } else if (action == Color_White) {
         // this only sets the color for some of the shows, not changing show
         Serial.println(F("Color White")); 
         white();
         solid();
         random_pattern = false;   // switch into manual mode until explicitly asked again
         set_overwrite_nervous();
-  } else if (ir == Color_Red) {
+  } else if (action == Color_Red) {
         // this only sets the color for some of the shows, not changing show
         Serial.println(F("Color Red")); 
         red();
         set_overwrite_nervous();
-  } else if (ir == Color_Blue) {
+  } else if (action == Color_Blue) {
         // this only sets the color for some of the shows, not changing show
         Serial.println(F("Color Blue")); 
-  } else if (ir == Blending_Overlay) {
+  } else if (action == Blending_Overlay) {
         Serial.println(F("Blending Overlay")); 
         set_blending_overlay();
-  } else if (ir == Off) {
+  } else if (action == Off) {
         Serial.println(F("Turning Off")); 
         // TODO
-  } else if (ir == Speed_Dec) {
+  } else if (action == Speed_Dec) {
         decrease_ghue_speed();
         Serial.println(F("Decrease Speed")); 
-  } else if (ir == Speed_Inc) {
+  } else if (action == Speed_Inc) {
         increase_ghue_speed();
         Serial.println(F("Increase Speed")); 
-  } else if (ir == Runtime_Dec) {
+  } else if (action == Runtime_Dec) {
         decrease_pattern_runtime();
         Serial.print(F("Increase Pattern Runtime: ")); 
         Serial.println(pattern_runtime);
-  } else if (ir == Runtime_Inc) {
+  } else if (action == Runtime_Inc) {
         increase_pattern_runtime();
         Serial.print(F("Increase Pattern Runtime: ")); 
         Serial.println(pattern_runtime);
-  } else if (ir == WiFi_On) {
-        wifi_toggle();      // if on, turn off, if off, turn on
+  } else if (action == WiFi_On) {
+        // TBD wifi_toggle();      // if on, turn off, if off, turn on
         Serial.print(F("Wifi On/Off")); 
   }
 
   timer.tick();   // pattern_timer
+
 
   // we only scan if we are not the server, but the ble_lib will check for that
   EVERY_N_SECONDS(5) {

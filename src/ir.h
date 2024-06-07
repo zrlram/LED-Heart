@@ -3,8 +3,11 @@
 https://github.com/Arduino-IRremote/Arduino-IRremote
 */
 
-#include <Arduino.h>
 #include <heart.h>
+
+#ifdef __USE_IR
+
+#include <Arduino.h>
 
 #if defined(ESP32) || defined(ARDUINO_ARCH_RP2040) || defined(PARTICLE) || defined(ARDUINO_ARCH_MBED)
 #define SEND_PWM_BY_TIMER // We do not have pin restrictions for this CPU's, so lets use the hardware PWM for send carrier signal generation
@@ -85,3 +88,4 @@ uint32_t read_ir();
 void send_flirt();
 void debug_ir();
 
+#endif

@@ -521,7 +521,7 @@ void sound_sample()  {
   }
   
   EVERY_N_SECONDS(5) {                                                                      // Change the target palette to a random one every 5 seconds.
-    static uint8_t baseC = random8();                                                       // You can use this as a baseline colour if you want similar hues in the next line.
+    // static uint8_t baseC = random8();                                                       // You can use this as a baseline colour if you want similar hues in the next line.
     targetPalette = CRGBPalette16(CHSV(random8(), 255, random8(128, 255)), CHSV(random8(), 255, random8(128, 255)), CHSV(random8(), 192, random8(128, 255)), CHSV(random8(), 255, random8(128, 255)));
   }
 
@@ -693,11 +693,11 @@ void sup(uint8_t rotationSpeed, uint8_t translationSpeed, uint8_t lineWidth, CRG
   }
   int32_t startHue = ms * mappedTranslationSpeed;
   int32_t lineStartHue = startHue - (HEIGHT + 2) / 2 * yHueDelta;
-  int16_t yd2 = sin16(ms * 3) / 4;
-  int16_t xd2 = sin16(ms * 7) / 4;
+  // int16_t yd2 = sin16(ms * 3) / 4;
+  // int16_t xd2 = sin16(ms * 7) / 4;
   for (byte y = 0; y < HEIGHT; y++) {
     uint32_t pixelHue = lineStartHue - (WIDTH + 2) / 2 * xHueDelta;
-    uint32_t xhd = xHueDelta;
+    // uint32_t xhd = xHueDelta;
     lineStartHue += yHueDelta;
     for (byte x = 0; x < WIDTH; x++) {
       if( y % RASTER_SPACING == 0 ) {
