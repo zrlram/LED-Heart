@@ -26,7 +26,7 @@
 #ifdef __USE_BUTTON       
   #define BUTTON_1_PIN        (17)
   #define BUTTON_2_PIN        (16)
-  #define BUTTON_3_PIN        (15)
+  #define BUTTON_3_PIN        (2)
   #define BUTTON_4_PIN        (21)
 #endif
 
@@ -107,6 +107,10 @@ static const uint8_t xy[HEIGHT][WIDTH] = {                  { ERROR_LED, ERROR_L
 uint8_t XY( uint8_t x, uint8_t y);
 void setup_heart();
 bool is_server();
+
+#define MENU_OPTIONS  (5)     // there are a total of 5 options
+
+extern int menu_index;
 
 // button action code mappings
 extern uint32_t Next_Show;

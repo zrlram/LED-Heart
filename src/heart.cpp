@@ -33,6 +33,13 @@ uint32_t Runtime_Dec;
 uint32_t Runtime_Inc;
 uint32_t WiFi_On;
 
+int menu_index = 0;    //  allows to cycle through the menu
+                              //  0 - select show (Next_Show, Prev_Show)
+                              //  1 - brightness
+                              //  2 - speed
+                              //  3 - runtime
+                              //  4 - random show toggle
+
 boolean is_server() {
   return is_serv;
 }

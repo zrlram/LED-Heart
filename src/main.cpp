@@ -78,12 +78,40 @@ void loop() {
   #ifdef __USE_BUTTON
     button_loop();
     if (button_pressed(0)) {
-      Serial.println("button 1 pressed");
-      action = Next_Show; // TBD
+      Serial.println("button 1 pressed - decrease value");
+      if (menu_index == 0)           // 0 - select show (Next_Show, Prev_Show)
+           action = Prev_Show; 
+      else if (menu_index == 1)      //  1 - brightness
+           action = Bright_Down; 
+      else if (menu_index == 2)      //  2 - speed
+           action = Speed_Dec;
+      else if (menu_index == 3)      //  3 - runtime
+           action = Runtime_Dec;
+      else if (menu_index == 4)      //  4 - random show toggle
+           action = Next_Show;      // drops out of random
     }
     if (button_pressed(1)) {
-      Serial.println("button 2 pressed");
-      action = Prev_Show; // TBD
+      Serial.println("button 2 pressed - increase value");
+      if (menu_index == 0)           // 0 - select show (Next_Show, Prev_Show)
+           action = Next_Show; 
+      else if (menu_index == 1)      //  1 - brightness
+           action = Bright_Up; 
+      else if (menu_index == 2)      //  2 - speed
+           action = Speed_Inc;
+      else if (menu_index == 3)      //  3 - runtime
+           action = Runtime_Inc;
+      else if (menu_index == 4)      //  4 - random show toggle
+           action = Randomize_Pattern;
+    }
+    if (button_pressed(2)) {
+      Serial.print("button 3 pressed - decrease menu item ");
+      menu_index = ( menu_index - 1 + MENU_OPTIONS ) % MENU_OPTIONS ;
+      Serial.println(menu_index);
+    }
+    if (button_pressed(3)) {
+      Serial.print("button 4 pressed - increase menu item ");
+      menu_index = ( menu_index + 1 ) % MENU_OPTIONS;
+      Serial.println(menu_index);
     }
   #endif
 
