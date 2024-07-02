@@ -7,9 +7,10 @@
 #undef  __USE_IR                        // use either InfraRed remote or buttons to control actions
 #define __USE_BUTTON                    // to be used with #ifdef 
 
+#define EEPROM_SIZE 1                   // how much data to store in EPROM - for server variable
+
 #define LED_PIN             (12)
 #define MIC_PIN             (32)                  // Analog port for microphone
-#define ROLE_PIN            (15)                  // for BLE flirting
 
 #define NUMPIXELS           (54)
 #define BRIGHTNESS          (100)

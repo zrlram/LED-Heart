@@ -1,4 +1,5 @@
 #include <heart.h>
+#include <EEPROM.h>
 #ifdef __USE_IR
   #include <ir.h>
 #endif
@@ -46,17 +47,31 @@ boolean is_server() {
 
 void setup_heart() {
 
+    EEPROM.begin(EEPROM_SIZE);
+
     // firgure out the role / sender or just receiver?
-    // set up the role pin
-    pinMode(ROLE_PIN, INPUT);
-    digitalWrite(ROLE_PIN, HIGH);
-    delay(20);    // To get a solid reading on the role pin
-    if ( digitalRead(ROLE_PIN) ) {
-      Serial.println("I am the server");
+    EEPROM.begin(EEPROM_SIZE);
+    // what did we have stored?
+    is_serv = EEPROM.read(0);
+    if (is_serv)
+      Serial.println("The Heart - Server Mode");
+    else
+      Serial.println("The Heart - Client Mode");
+
+    // TODO - we'll see if the buttons have been set up already
+    // if both buttons 1 and 2 are pressed at startup, we put this guy into server mode
+    if ( !digitalRead(BUTTON_1_PIN) and !digitalRead(BUTTON_2_PIN) ) {
+      Serial.println("Startup - setting to server");
       is_serv = true;
-    } else {
+      EEPROM.write(0, is_serv);
+      EEPROM.commit();
+    }
+    // if both buttons 3 and 4 are pressed at startup, we put this guy into server mode
+    if ( !digitalRead(BUTTON_3_PIN) and !digitalRead(BUTTON_4_PIN) ) {
+      Serial.println("Startup - setting to client");
       is_serv = false;
-      Serial.println("I am going to find the server");
+      EEPROM.write(0, is_serv);
+      EEPROM.commit();
     }
 
     #ifdef __USE_IR
