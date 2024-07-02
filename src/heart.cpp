@@ -50,8 +50,6 @@ void setup_heart() {
     EEPROM.begin(EEPROM_SIZE);
 
     // firgure out the role / sender or just receiver?
-    EEPROM.begin(EEPROM_SIZE);
-    // what did we have stored?
     is_serv = EEPROM.read(0);
     if (is_serv)
       Serial.println("The Heart - Server Mode");
@@ -60,14 +58,14 @@ void setup_heart() {
 
     // TODO - we'll see if the buttons have been set up already
     // if both buttons 1 and 2 are pressed at startup, we put this guy into server mode
-    if ( !digitalRead(BUTTON_1_PIN) and !digitalRead(BUTTON_2_PIN) ) {
+    if ( digitalRead(BUTTON_1_PIN) && digitalRead(BUTTON_2_PIN) ) {
       Serial.println("Startup - setting to server");
       is_serv = true;
       EEPROM.write(0, is_serv);
       EEPROM.commit();
     }
     // if both buttons 3 and 4 are pressed at startup, we put this guy into server mode
-    if ( !digitalRead(BUTTON_3_PIN) and !digitalRead(BUTTON_4_PIN) ) {
+    if ( digitalRead(BUTTON_3_PIN) && digitalRead(BUTTON_4_PIN) ) {
       Serial.println("Startup - setting to client");
       is_serv = false;
       EEPROM.write(0, is_serv);

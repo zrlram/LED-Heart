@@ -1,20 +1,13 @@
 #pragma once
 
 #include <heart.h>
-#include <ezButton.h>
+#include <InterruptButton.h>
 
 #ifdef __USE_BUTTON
 
-#define DEBOUNCE_TIME 50    // the debounce time in millisecond, increase this time if it still chatters
-
-extern ezButton buttons[4];
+extern InterruptButton buttons[4];
 
 void setup_button();
-void button_loop();
-boolean button_pressed(int button);         // 1 = button 1         binary encoded
-                                            // 2 = button 2
-                                            // 3 = button 1 + 2
-                                            // 4 = button 3
 
 #define Flirt 0x1
 #define Button_BrightUp 0x2
