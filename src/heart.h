@@ -1,6 +1,14 @@
 #pragma once
 #include <Arduino.h>
 
+// Logging 
+// About esp_log vs. esp_log_hal: https://thingpulse.com/esp32-logging/
+// Nothing but problems with logging. Either it logs verbose from all libraries or then only ERRs from mine
+// #define LOG_LOCAL_LEVEL ESP_LOG_DEBUG  // Set the log level to WARN or higher
+// #include "esp32-hal-log.h"  // Include esp32-hal-log.h after redefining macros
+// #include "esp_log.h"
+
+#define VERSION             1.1
 #define DEBUG               0
 #define DEBUG_IR            1
 
@@ -11,6 +19,7 @@
 
 #define LED_PIN             (12)
 #define MIC_PIN             (32)                  // Analog port for microphone
+#define VOLTAGE_PIN         ADC1_CHANNEL_0        // GPIO36 (VP)
 
 #define NUMPIXELS           (54)
 #define BRIGHTNESS          (100)
@@ -27,7 +36,7 @@
 #ifdef __USE_BUTTON       
   #define BUTTON_1_PIN        (17)
   #define BUTTON_2_PIN        (16)
-  #define BUTTON_3_PIN        (2)
+  #define BUTTON_3_PIN        (4)
   #define BUTTON_4_PIN        (21)
 #endif
 
@@ -128,4 +137,5 @@ extern uint32_t Speed_Dec;
 extern uint32_t Speed_Inc;
 extern uint32_t Runtime_Dec;
 extern uint32_t Runtime_Inc;
+extern uint32_t Show_Voltage;
 extern uint32_t WiFi_On;

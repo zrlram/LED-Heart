@@ -12,6 +12,7 @@
 #include "arduino-timer.h"
 #include <averagesContainer.h>
 #include <fscale.h>
+#include <voltage.h>         
 
 #define ARRAY_SIZE(A) (sizeof(A) / sizeof((A)[0]))
 
@@ -77,6 +78,11 @@ void decrease_ghue_speed(bool show_indicator = true) {
     GHUE_SPEED -= 50;
   if (show_indicator) 
     indicator(GHUE_SPEED, 1000, CRGB::Pink);
+}
+
+void show_voltage() {
+  // 5 is 5V - the max
+  indicator(voltage(), 5, CRGB::Red);
 }
 
 void setColor(CRGB col) {
