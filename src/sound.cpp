@@ -23,7 +23,11 @@ int sampleAgc, multAgc;
 void setup_sound() {
   // https://www.atomic14.com/2020/09/12/esp32-audio-input.html
 
-  pinMode(MIC_PIN, INPUT);
+  //analogReadResolution(12);       // Set the resolution to 12 bits (0-4095)
+  //analogSetAttenuation(ADC_2_5db);  // Set the attenuation for the ADC
+  //pinMode(MIC_PIN, INPUT);        
+  adc1_config_width(ADC_WIDTH_BIT_12);
+  adc1_config_channel_atten(MIC_PIN, ADC_ATTEN_DB_2_5);
 }
 
 
@@ -31,11 +35,19 @@ void getSample() {
   
   int16_t micIn;                                              // Current sample starts with negative values and large values, which is why it's 16 bit signed.
   static long peakTime;
+  // static int count;
   
-  micIn = analogRead(MIC_PIN)/4.0;                                // Poor man's analog Read. // div by 4 for ESP32 - [0, 1024]
+  // micIn = analogRead(MIC_PIN)/4.0;                                // Poor man's analog Read. // div by 4 for ESP32 - [0, 1024]
+  micIn = adc1_get_raw(MIC_PIN);
+  // micIn = analogRead(MIC_PIN);                                // Poor man's analog Read. // div by 4 for ESP32 - [0, 1024]
 
-  // Serial.print(micIn);
-  // Serial.print(" ");
+
+  /*
+  count = (count + 1) % 20;
+  if (count == 1) Serial.println();
+  Serial.print(micIn);
+  Serial.print(" ");
+  */
   micLev = ((micLev * 31) + micIn) / 32;                      // Smooth it out over the last 32 samples for automatic centering.
   micIn -= micLev;                                            // Let's center it to 0 now.
   micIn = abs(micIn);                                         // And get the absolute value of each sample.
@@ -46,7 +58,6 @@ void getSample() {
     samplePeak = 1;
     peakTime=millis();
   }                                                           // Then we got a peak, else we don't. Display routines need to reset the samplepeak value in case they miss the trigger.
-  // Serial.println();
   
 }  // getSample()
 
