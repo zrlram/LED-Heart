@@ -34,7 +34,13 @@ uint32_t action = 0;      // what action to take (either via button or IR)
 
 void setup() {
   
-  Serial.begin(9600);
+  Serial.begin(115200);
+  Serial.print("The Heart - Version: ");
+  Serial.print(VERSION);
+  Serial.print(" | Compiled: ");
+  Serial.print(__DATE__);
+  Serial.print(" ");
+  Serial.println(__TIME__);
 
   setup_heart();
   setup_leds();
@@ -59,8 +65,10 @@ void setup() {
            action = Speed_Dec;
       else if (menu_index == 3)      //  3 - runtime
            action = Runtime_Dec;
-      else if (menu_index == 4)      //  4 - random show toggle
-           action = Next_Show;      // drops out of random
+      else if (menu_index == 4)      //  4 - show votlage
+           action = Show_Voltage;
+      else if (menu_index == 5)      //  5 - random show toggle
+           action = Next_Show;       // drops out of random
     });
     buttons[1].bind(Event_KeyDown, [](){ 
       Serial.println("button 2 pressed - increase value");
@@ -72,7 +80,9 @@ void setup() {
            action = Speed_Inc;
       else if (menu_index == 3)      //  3 - runtime
            action = Runtime_Inc;
-      else if (menu_index == 4)      //  4 - random show toggle
+      else if (menu_index == 4)      //  4 - show votlage
+           action = Show_Voltage;
+      else if (menu_index == 5)      //  5 - random show toggle
            action = Randomize_Pattern;
     });
     buttons[2].bind(Event_KeyDown, [](){ 
@@ -187,6 +197,10 @@ void loop() {
         increase_pattern_runtime();
         Serial.print(F("Increase Pattern Runtime: ")); 
         Serial.println(pattern_runtime);
+        action = 0;
+  } else if (action == Show_Voltage) {
+        Serial.print(F("Show Voltage: ")); 
+        show_voltage();
         action = 0;
   } else if (action == WiFi_On) {
         // TBD wifi_toggle();      // if on, turn off, if off, turn on

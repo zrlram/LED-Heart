@@ -7,6 +7,8 @@
   #include <button.h>
 #endif
 
+
+
 uint8_t XY( uint8_t x, uint8_t y)
 // returns ERROR_LED for non existing LED
 {
@@ -32,6 +34,7 @@ uint32_t Speed_Dec;
 uint32_t Speed_Inc;
 uint32_t Runtime_Dec;
 uint32_t Runtime_Inc;
+uint32_t Show_Voltage;
 uint32_t WiFi_On;
 
 int menu_index = 0;    //  allows to cycle through the menu
@@ -47,25 +50,39 @@ boolean is_server() {
 
 void setup_heart() {
 
+    // Serial.setDebugOutput(true);
+
+    // not working for some reason
+    // esp_log_level_set("*", ESP_LOG_WARN); 
+    // esp_log_level_set("Heart", ESP_LOG_VERBOSE);        
+
     EEPROM.begin(EEPROM_SIZE);
+
+    /* 
+    ESP_LOGW("Heart","WARN");
+    ESP_LOGD("Heart","DEBUG");
+    ESP_LOGI("Heart","INFO");
+    ESP_LOGE("Heart","ERROR");
+    ESP_LOGV("Heart","VERBOSE");
+    */
 
     // firgure out the role / sender or just receiver?
     is_serv = EEPROM.read(0);
-    if (is_serv)
-      Serial.println("The Heart - Server Mode");
+    if (is_serv) 
+      Serial.println("Mode: Server");
     else
-      Serial.println("The Heart - Client Mode");
+      Serial.println("Mode: Client");
 
-    // TODO - we'll see if the buttons have been set up already
     // if both buttons 1 and 2 are pressed at startup, we put this guy into server mode
-    if ( digitalRead(BUTTON_1_PIN) && digitalRead(BUTTON_2_PIN) ) {
+    // buttons are pulled HIGH
+    if ( !digitalRead(BUTTON_1_PIN) && !digitalRead(BUTTON_2_PIN) ) {
       Serial.println("Startup - setting to server");
       is_serv = true;
       EEPROM.write(0, is_serv);
       EEPROM.commit();
     }
     // if both buttons 3 and 4 are pressed at startup, we put this guy into server mode
-    if ( digitalRead(BUTTON_3_PIN) && digitalRead(BUTTON_4_PIN) ) {
+    if ( !digitalRead(BUTTON_3_PIN) && !digitalRead(BUTTON_4_PIN) ) {
       Serial.println("Startup - setting to client");
       is_serv = false;
       EEPROM.write(0, is_serv);
@@ -89,6 +106,7 @@ void setup_heart() {
       Speed_Inc = Button_LightGreen;
       Runtime_Dec = Button_LightRed;
       Runtime_Inc = Button_LightLightBlue;
+      Show_Voltage = 
       WiFi_On = Button_On;
 
     } else {
@@ -107,6 +125,7 @@ void setup_heart() {
       Speed_Inc = Button_CH_Plus;
       Runtime_Dec = Button_1;
       Runtime_Inc = Button_2;
+      Show_Voltage = 
       WiFi_On = Button_3;
 
    }
@@ -126,6 +145,7 @@ void setup_heart() {
       Speed_Inc = Button_LightGreen;
       Runtime_Dec = Button_LightRed;
       Runtime_Inc = Button_LightLightBlue;
+      Show_Voltage = Button_Purple;
       WiFi_On = Button_On;
 
    #endif
