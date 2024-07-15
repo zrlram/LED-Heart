@@ -18,7 +18,7 @@
 #define EEPROM_SIZE 1                   // how much data to store in EPROM - for server variable
 
 #define LED_PIN             (12)
-#define MIC_PIN             (32)                  // Analog port for microphone
+#define MIC_PIN             ADC1_CHANNEL_4        // PIN 32 Analog port for microphone
 #define VOLTAGE_PIN         ADC1_CHANNEL_0        // GPIO36 (VP)
 
 #define NUMPIXELS           (54)
